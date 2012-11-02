@@ -1,0 +1,10 @@
+.container
+  .hero-unit
+    h1 Hello, world!
+  .thumbnails
+    - for(i=0;i<10;i++)
+      li(class="span3")
+        .thumbnail
+          - for(j=0;j<i+1;j++)
+            |TEST
+            br
