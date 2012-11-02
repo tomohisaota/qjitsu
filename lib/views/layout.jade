@@ -9,9 +9,10 @@ head
   meta(name='description', content='DESCRIPTION')
   meta(name='author', content='AUTHOR')
   meta(name="viewport", content="width=device-width, initial-scale=1.0")
-
+  
   != css('bootstrap')
   != css('bootstrap-responsive')
+  != css('masonry')
 
 body
   .navbar.navbar-fixed-top
@@ -54,10 +55,10 @@ body
                    }
                    return 300;
                 },
-                isAnimated: true,
-                animationOptions: {
-                  duration: 100
-                }
+                // isAnimated: false
+                // animationOptions: {
+                //   duration: 100
+                // }
             });
         });
     });
