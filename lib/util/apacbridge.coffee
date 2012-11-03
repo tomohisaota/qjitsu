@@ -65,3 +65,37 @@ exports.topSellers = (locale,nodeid,cb)->
     for item in rawResult.TopSellers[0].TopSeller
       result.topsellers.push item.ASIN[0]
     return cb(null,result)
+
+exports.itemLookup = (locale,itemIds,cb)->
+  accessDate = new Date()
+  newHelperForLocale(locale).execute 'ItemLookup', {
+      'ItemId': itemIds.join(",")
+      'ResponseGroup': 'Medium'
+  }, (err, rawResult)->
+    if (err)
+      return cb(err)
+    unless (rawResult.ItemLookupResponse?)
+      return cb(new Error("Failed to parse response"))
+    itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
+    result = {
+      Locale : locale
+      Items : []
+    }
+    for itemRaw in itemsRaw
+      item = {
+        Itemid : itemRaw.ASIN[0]
+        DetailPageURL : itemRaw.DetailPageURL[0]
+        Timestamp : accessDate
+        Author : itemRaw.ItemAttributes[0].Author[0]
+        Manufacturer : itemRaw.ItemAttributes[0].Manufacturer[0]
+        ProductGroup : itemRaw.ItemAttributes[0].ProductGroup[0]
+        Title : itemRaw.ItemAttributes[0].Title[0]
+        Images : {}
+      }
+      item.Images.Medium = {
+        URL : itemRaw.MediumImage[0].URL[0]
+        Width : parseInt(itemRaw.MediumImage[0].Width[0]["_"])
+        Height : parseInt(itemRaw.MediumImage[0].Height[0]["_"])
+      }
+      result.Items.push(item)
+    return cb(null,result)
