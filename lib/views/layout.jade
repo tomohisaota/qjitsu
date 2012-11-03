@@ -5,61 +5,33 @@
 // [if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]
 head
   meta(charset='utf-8')
-  title APP_NAME
+  title QJITSU
   meta(name='description', content='DESCRIPTION')
   meta(name='author', content='AUTHOR')
   meta(name="viewport", content="width=device-width, initial-scale=1.0")
   
   != css('bootstrap')
+  style(type="text/css")
+    body{
+      padding-top: 60px;
+      padding-bottom: 40px;
+    }
   != css('bootstrap-responsive')
   != css('masonry')
 
 body
-  .navbar.navbar-fixed-top
+  .navbar.navbar-fixed-top.navbar-inverse
     .navbar-inner
       .container
-        a.btn.btn-navbar(data-toggle="collapse", data-target=".nav-collapse")
-          span.icon-bar
-          span.icon-bar
-          span.icon-bar
-        a.brand(href="#") APP_NAME
-        .nav-collapse
-          ul.nav
-            li.active
-              a(href="#") Home
-
-  != body
-
+        a.brand(href="#") QJITSU
+        ul.nav
+          li.active
+            a(href="#") Home
   != js('jquery-1.8.2')
   != js('bootstrap')
   != js('jquery.masonry.min')
   script(src="/socket.io/socket.io.js")
   != js('socket_handlers')
 
-  script
-    $(function(){
-        var $container = $('.thumbnails');
-        $container.imagesLoaded( function(){
-            $container.masonry({
-                itemSelector : '.span3',
-                 columnWidth: function( containerWidth ) {
-                   if($(".container").width() == 940) {
-                     return 240;
-                   }
-                   var width = $(window).width();
-                   if(width < 1200 && width >= 980) {
-                     return 240;
-                   }
-                   else if(width < 980 && width >= 768) {
-                     return 186;
-                   }
-                   return 300;
-                },
-                // isAnimated: false
-                // animationOptions: {
-                //   duration: 100
-                // }
-            });
-        });
-    });
+  != body  
 | </html>

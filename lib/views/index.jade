@@ -1,10 +1,32 @@
 .container
-  .hero-unit
-    h1 Hello, world!
-  .thumbnails
-    - for(i=0;i<10;i++)
-      li(class="span3")
-        .thumbnail
-          - for(j=0;j<i+1;j++)
-            |TEST
-            br
+  .boxes
+    .loading
+      |Loading...
+            
+script
+  $(function(){
+    jQuery.getJSON('/json/popular.json',function(data,textStatus) {
+      if(textStatus == 'success') {
+        jQuery.each(data.Item,function(key,value){
+          $box = $("<div/>").addClass("box");
+          $link = $("<a/>")
+            .attr("href",value.DetailPageURL)
+            .attr("target","_blank");
+          if(value.MediumImage){
+            $link.append($("<img/>")
+              .attr("src",value.MediumImage[0].URL));
+          }
+          $box.append($link);
+          //$box.append($("<span/>").text(value.ItemAttributes[0].Author[0]));
+          $(".boxes").append($box);
+        });
+        $('.boxes').imagesLoaded(function(){
+          $('.boxes').masonry({
+            itemSelector : '.box',
+            columnWidth : 250
+          });
+          $('.loading').hide();
+        });
+      }
+    });
+  });

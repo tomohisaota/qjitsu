@@ -1,6 +1,6 @@
 {
   "name": "qjitsu",
-  "version": "0.0.1-1",
+  "version": "0.0.1-2",
   "private": true,
   "dependencies": {
     "coffee-script": "1.2.x",
@@ -8,13 +8,14 @@
     "connect-assets": "2.1.x",
     "jade": "*",
     "stylus": "*",
-    "socket.io": "0.9.x"
+    "socket.io": "0.9.x",
+    "apac": "*",
+    "apacroot": "0.0.3"
   },
   "devDependencies": {
     "mocha": "*",
     "should": "*"
   },
-  "engine": "node ~> 0.6.x",
   "scripts": {
     "start": "lib/server.js"
   },
