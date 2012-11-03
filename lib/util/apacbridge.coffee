@@ -9,62 +9,68 @@ newHelperForLocale = (locale)->
       endPoint:  apacroot.endpoint(locale)
   }
 
-exports.nodeLookup = (locale,nodeid,cb)->
+exports.nodeLookup = (locale,nodeids,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'BrowseNodeLookup', {
-      'BrowseNodeId': nodeid
+      'BrowseNodeId': nodeids.join(",")
   }, (err, rawResult)->
     if (err)
       return cb(err)
     unless (rawResult.BrowseNodeLookupResponse?)
       return cb(new Error("Failed to parse response"))
     #console.log JSON.stringify(rawResult,null," ")
-    rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode[0]
-    result = {
-      locale : locale
-      id : rawResult.BrowseNodeId[0]
-      name : rawResult.Name[0]
-      timestamp : accessDate
-      children : []
-      ancestors : []
-    }
-    if(rawResult.IsCategoryRoot)
-      result.isRoot = rawResult.IsCategoryRoot[0] == "1"
-    if(rawResult.Children)
-      for child in rawResult.Children[0].BrowseNode
-        result.children.push {
-          id : child.BrowseNodeId[0]
-          name : child.Name[0]
-        }
-    if(rawResult.Ancestors)
-      for ancestor in rawResult.Ancestors[0].BrowseNode
-        result.ancestors.push {
-          id : ancestor.BrowseNodeId[0]
-          name : ancestor.Name[0]
-        }
-    return cb(null,result)
+    rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
+    Nodes = []
+    for nodeRaw in rawResult
+      node = {
+        Locale : locale
+        NodeId : nodeRaw.BrowseNodeId[0]
+        Name : nodeRaw.Name[0]
+        Timestamp : accessDate
+        Children : []
+        Ancestors : []
+      }
+      if(nodeRaw.IsCategoryRoot)
+        node.isRoot = nodeRaw.IsCategoryRoot[0] == "1"
+      if(nodeRaw.Children)
+        for child in nodeRaw.Children[0].BrowseNode
+          node.Children.push {
+            NodeId : child.BrowseNodeId[0]
+            Name : child.Name[0]
+          }
+      if(nodeRaw.Ancestors)
+        for ancestor in nodeRaw.Ancestors[0].BrowseNode
+          node.Ancestors.push {
+            NodeId : ancestor.BrowseNodeId[0]
+            Name : ancestor.Name[0]
+          }
+      Nodes.push(node)
+    return cb(null,Nodes)
     
-exports.topSellers = (locale,nodeid,cb)->
+exports.topSellers = (locale,nodeids,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'BrowseNodeLookup', {
-      'BrowseNodeId': nodeid
+      'BrowseNodeId': nodeids.join(",")
       'ResponseGroup': 'TopSellers'
   }, (err, rawResult)->
     if (err)
       return cb(err)
     unless (rawResult.BrowseNodeLookupResponse?)
       return cb(new Error("Failed to parse response"))
-    rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode[0]
-    result = {
-      locale : locale
-      id : rawResult.BrowseNodeId[0]
-      name : rawResult.Name[0]
-      timestamp : accessDate
-      topsellers:[]
-    }
-    for item in rawResult.TopSellers[0].TopSeller
-      result.topsellers.push item.ASIN[0]
-    return cb(null,result)
+    rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
+    Nodes = []
+    for nodeRaw in rawResult
+      node = {
+        Locale : locale
+        NodeId : nodeRaw.BrowseNodeId[0]
+        Name : nodeRaw.Name[0]
+        Timestamp : accessDate
+        Topsellers:[]
+      }
+      for item in nodeRaw.TopSellers[0].TopSeller
+        node.Topsellers.push item.ASIN[0]
+      Nodes.push(node)
+    return cb(null,Nodes)
 
 exports.itemLookup = (locale,itemIds,cb)->
   accessDate = new Date()
@@ -77,12 +83,10 @@ exports.itemLookup = (locale,itemIds,cb)->
     unless (rawResult.ItemLookupResponse?)
       return cb(new Error("Failed to parse response"))
     itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
-    result = {
-      Locale : locale
-      Items : []
-    }
+    Items = []
     for itemRaw in itemsRaw
       item = {
+        Locale : locale
         Itemid : itemRaw.ASIN[0]
         DetailPageURL : itemRaw.DetailPageURL[0]
         Timestamp : accessDate
@@ -97,5 +101,5 @@ exports.itemLookup = (locale,itemIds,cb)->
         Width : parseInt(itemRaw.MediumImage[0].Width[0]["_"])
         Height : parseInt(itemRaw.MediumImage[0].Height[0]["_"])
       }
-      result.Items.push(item)
-    return cb(null,result)
+      Items.push(item)
+    return cb(null,Items)
