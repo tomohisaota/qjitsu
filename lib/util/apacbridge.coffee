@@ -9,17 +9,18 @@ newHelperForLocale = (locale)->
       endPoint:  apacroot.endpoint(locale)
   }
 
-exports.nodeLookup = (locale,nodeids,cb)->
+exports.nodeLookup = (locale,nodeids,responseGroup,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'BrowseNodeLookup', {
       'BrowseNodeId': nodeids.join(",")
+      'ResponseGroup': responseGroup.join(",")
   }, (err, rawResult)->
     if (err)
       return cb(err)
     unless (rawResult.BrowseNodeLookupResponse?)
       return cb(new Error("Failed to parse response"))
-    #console.log JSON.stringify(rawResult,null," ")
     rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
+    console.log JSON.stringify(rawResult,null," ")
     Nodes = []
     for nodeRaw in rawResult
       node = {
@@ -27,48 +28,44 @@ exports.nodeLookup = (locale,nodeids,cb)->
         NodeId : nodeRaw.BrowseNodeId[0]
         Name : nodeRaw.Name[0]
         Timestamp : accessDate
-        Children : []
-        Ancestors : []
       }
       if(nodeRaw.IsCategoryRoot)
         node.isRoot = nodeRaw.IsCategoryRoot[0] == "1"
       if(nodeRaw.Children)
+        node.Children = []
         for child in nodeRaw.Children[0].BrowseNode
           node.Children.push {
             NodeId : child.BrowseNodeId[0]
             Name : child.Name[0]
           }
       if(nodeRaw.Ancestors)
+        node.Ancestors = []
         for ancestor in nodeRaw.Ancestors[0].BrowseNode
           node.Ancestors.push {
             NodeId : ancestor.BrowseNodeId[0]
             Name : ancestor.Name[0]
           }
-      Nodes.push(node)
-    return cb(null,Nodes)
-    
-exports.topSellers = (locale,nodeids,cb)->
-  accessDate = new Date()
-  newHelperForLocale(locale).execute 'BrowseNodeLookup', {
-      'BrowseNodeId': nodeids.join(",")
-      'ResponseGroup': 'TopSellers'
-  }, (err, rawResult)->
-    if (err)
-      return cb(err)
-    unless (rawResult.BrowseNodeLookupResponse?)
-      return cb(new Error("Failed to parse response"))
-    rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
-    Nodes = []
-    for nodeRaw in rawResult
-      node = {
-        Locale : locale
-        NodeId : nodeRaw.BrowseNodeId[0]
-        Name : nodeRaw.Name[0]
-        Timestamp : accessDate
-        Topsellers:[]
-      }
-      for item in nodeRaw.TopSellers[0].TopSeller
-        node.Topsellers.push item.ASIN[0]
+      if(nodeRaw.TopItemSet)
+        for itemSetRaw in nodeRaw.TopItemSet
+          if(itemSetRaw.Type[0] == "MostGifted")
+            node.MostGifted = []
+            for item in itemSetRaw.TopItem
+              node.MostGifted.push item.ASIN[0]
+          if(itemSetRaw.Type[0] == "NewReleases")
+            node.NewReleases = []
+            for item in itemSetRaw.TopItem
+              node.NewReleases.push item.ASIN[0]
+          if(itemSetRaw.Type[0] == "MostWishedFor")
+            node.MostWishedFor = []
+            for item in itemSetRaw.TopItem
+              node.MostWishedFor.push item.ASIN[0]
+          if(itemSetRaw.Type[0] == "TopSellers")
+            node.TopSellers = []
+            for item in itemSetRaw.TopItem
+              node.TopSellers.push item.ASIN[0]
+      
+
+          
       Nodes.push(node)
     return cb(null,Nodes)
 
