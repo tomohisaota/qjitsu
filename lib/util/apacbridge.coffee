@@ -20,7 +20,6 @@ exports.nodeLookup = (locale,nodeids,responseGroup,cb)->
     unless (rawResult.BrowseNodeLookupResponse?)
       return cb(new Error("Failed to parse response"))
     rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
-    console.log JSON.stringify(rawResult,null," ")
     Nodes = []
     for nodeRaw in rawResult
       node = {
@@ -63,9 +62,6 @@ exports.nodeLookup = (locale,nodeids,responseGroup,cb)->
             node.TopSellers = []
             for item in itemSetRaw.TopItem
               node.TopSellers.push item.ASIN[0]
-      
-
-          
       Nodes.push(node)
     return cb(null,Nodes)
 
@@ -73,10 +69,11 @@ exports.itemLookup = (locale,itemIds,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'ItemLookup', {
       'ItemId': itemIds.join(",")
-      'ResponseGroup': 'Medium'
+      'ResponseGroup': 'Medium,Images'
   }, (err, rawResult)->
     if (err)
       return cb(err)
+    #console.log JSON.stringify(rawResult,null," ")
     unless (rawResult.ItemLookupResponse?)
       return cb(new Error("Failed to parse response"))
     itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
@@ -87,16 +84,23 @@ exports.itemLookup = (locale,itemIds,cb)->
         Itemid : itemRaw.ASIN[0]
         DetailPageURL : itemRaw.DetailPageURL[0]
         Timestamp : accessDate
-        Author : itemRaw.ItemAttributes[0].Author[0]
-        Manufacturer : itemRaw.ItemAttributes[0].Manufacturer[0]
-        ProductGroup : itemRaw.ItemAttributes[0].ProductGroup[0]
-        Title : itemRaw.ItemAttributes[0].Title[0]
-        Images : {}
       }
-      item.Images.Medium = {
-        URL : itemRaw.MediumImage[0].URL[0]
-        Width : parseInt(itemRaw.MediumImage[0].Width[0]["_"])
-        Height : parseInt(itemRaw.MediumImage[0].Height[0]["_"])
-      }
+      if(itemRaw.ItemAttributes)
+        if(itemRaw.ItemAttributes[0].Author)
+          item.Author = itemRaw.ItemAttributes[0].Author[0]
+        if(itemRaw.ItemAttributes[0].Manufacturer)
+          item.Manufacturer = itemRaw.ItemAttributes[0].Manufacturer[0]
+        if(itemRaw.ItemAttributes[0].ProductGroup)
+          item.ProductGroup = itemRaw.ItemAttributes[0].ProductGroup[0]
+        if(itemRaw.ItemAttributes[0].Title)
+          item.Title = itemRaw.ItemAttributes[0].Title[0]
+      
+      if(itemRaw.MediumImage)
+        item.Images = {}
+        item.Images.Medium = {
+          URL : itemRaw.MediumImage[0].URL[0]
+          Width : parseInt(itemRaw.MediumImage[0].Width[0]["_"])
+          Height : parseInt(itemRaw.MediumImage[0].Height[0]["_"])
+        }
       Items.push(item)
     return cb(null,Items)
