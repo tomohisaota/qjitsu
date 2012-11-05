@@ -1,16 +1,16 @@
 {
   "name": "qjitsu",
-  "version": "0.0.1-2",
+  "version": "0.0.1-3",
   "private": true,
   "dependencies": {
-	"async": "*",
+    "async": "*",
     "coffee-script": "1.2.x",
     "express": "2.5.x",
     "connect-assets": "2.1.x",
     "jade": "*",
     "stylus": "*",
     "socket.io": "0.9.x",
-    "apac": "*",
+    "apac": "git://github.com/tomohisaota/node-apac.git",
     "apacroot": "0.0.3"
   },
   "devDependencies": {
