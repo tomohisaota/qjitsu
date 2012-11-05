@@ -119,14 +119,17 @@ exports.nodeLookupFull = (locale,nodeids,cb)->
     itemIdMap = {}
     for nodeResult in nodeResults
       for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
+        continue unless(ids)
         for id in ids
           itemIdMap[id] = {}
+    
     itemLookupByMap locale,itemIdMap,(err,itemMap)->
       if(err)
         return cb(err)
       for nodeResult in nodeResults
         nodeResult.itemMap = {}
         for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
+          continue unless(ids)
           for id in ids
             nodeResult.itemMap[id] = itemMap[id]
       cb(null,nodeResults)
@@ -136,6 +139,8 @@ itemLookupByMap = (locale,itemIdMap,cb)->
   ops = []
   for ids in sliceBySize(itemIds,10)
     ops.push(opItemLookup(locale,ids,cb))
+  console.log itemIds
+  console.log sliceBySize(itemIds,10)
   async.parallel ops,(err,results)->
     if(err)
       return cb(err)
@@ -147,6 +152,8 @@ itemLookupByMap = (locale,itemIdMap,cb)->
 
 sliceBySize = (items,maxItemPerSlice)->
   result = []
+  if(items.length == 0)
+    return result
   for i in [0 .. (items.length-1)/maxItemPerSlice]
     result.push(items.slice(i*maxItemPerSlice,Math.min((i+1)*maxItemPerSlice,items.length)))
   return result
