@@ -22,3 +22,15 @@
        -o-transition-property: left, right, top;
           transition-property: left, right, top;
 }
+
+.box {
+  border-radius: 5px;         /* CSS3 */
+  -moz-border-radius: 5px;    /* Firefox */
+  -webkit-border-radius: 5px; /* Safari,Chrome */
+
+  border: medium solid lightgray;
+  width : 200px;
+  text-align : center;
+  padding : 2px;
+  margin : 5px;
+}
