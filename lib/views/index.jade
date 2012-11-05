@@ -14,23 +14,35 @@ script
           $('.boxes').masonry({
             itemSelector : '.box'
           });
+          $('a[rel=popover]').popover({
+            placement : "bottom",
+            trigger : "hover"
+          });
           $('.loading').hide();
         });
       }
     });
   });
   function addItem(value){
+    $box = $("<div/>").addClass("box");
+    $link = $("<a/>")
+      .attr("href",value.DetailPageURL)
+      .attr("rel","popover")
+      .attr("data-title",value.Title)
+      .attr("target","_blank");
     if(value.Images){
-      $box = $("<div/>").addClass("box");
-      $link = $("<a/>")
-        .attr("href",value.DetailPageURL)
-        .attr("target","_blank");
-      if(value.Images){
-        $link.append($("<img/>")
-          .attr("src",value.Images.Medium.URL));
-      }
-      $box.append($link);
-      //$box.append($("<span/>").text(value.ItemAttributes[0].Author[0]));
-      $(".boxes").append($box);
+      $link.append($("<img/>")
+        .attr("src",value.Images.Medium.URL)
+        .attr("width",value.Images.Medium.Width)
+        .attr("height",value.Images.Medium.Height));
     }
+    else{
+      $link.append($("<img/>")
+        .attr("src","http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif")
+        .attr("width",150)
+        .attr("height",150));
+
+    }
+    $box.append($link);
+    $(".boxes").append($box);
   }
