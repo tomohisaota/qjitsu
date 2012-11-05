@@ -29,6 +29,7 @@
   -webkit-border-radius: 5px; /* Safari,Chrome */
 
   border: medium solid lightgray;
+  background-color : white;
   width : 200px;
   text-align : center;
   padding : 2px;
