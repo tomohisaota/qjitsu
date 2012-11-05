@@ -111,7 +111,7 @@ exports.nodeLookupFull = (locale,nodeids,cb)->
   nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)->
     if(err)
       return cb(err)
-    console.log nodeResults
+    #console.log nodeResults
     # Create unique set of all item ids to lookup
     itemIdMap = {}
     for nodeResult in nodeResults
