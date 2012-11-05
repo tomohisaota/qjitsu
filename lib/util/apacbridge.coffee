@@ -1,4 +1,5 @@
 apacroot = require("apacroot")
+async = require("async")
 
 newHelperForLocale = (locale)->
   OperationHelper = require('apac').OperationHelper
@@ -9,7 +10,7 @@ newHelperForLocale = (locale)->
       endPoint:  apacroot.endpoint(locale)
   }
 
-exports.nodeLookup = (locale,nodeids,responseGroup,cb)->
+nodeLookup = (locale,nodeids,responseGroup,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'BrowseNodeLookup', {
       'BrowseNodeId': nodeids.join(",")
@@ -66,7 +67,7 @@ exports.nodeLookup = (locale,nodeids,responseGroup,cb)->
       Nodes.push(node)
     return cb(null,Nodes)
 
-exports.itemLookup = (locale,itemIds,cb)->
+itemLookup = (locale,itemIds,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'ItemLookup', {
       'ItemId': itemIds.join(",")
@@ -105,3 +106,51 @@ exports.itemLookup = (locale,itemIds,cb)->
         }
       Items.push(item)
     return cb(null,Items)
+    
+exports.nodeLookupFull = (locale,nodeids,cb)->
+  nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)->
+    if(err)
+      return cb(err)
+    console.log nodeResults
+    # Create unique set of all item ids to lookup
+    itemIdMap = {}
+    for nodeResult in nodeResults
+      for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
+        for id in ids
+          itemIdMap[id] = {}
+    itemLookupByMap locale,itemIdMap,(err,itemMap)->
+      if(err)
+        return cb(err)
+      for nodeResult in nodeResults
+        nodeResult.itemMap = {}
+        for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
+          for id in ids
+            nodeResult.itemMap[id] = itemMap[id]
+      cb(null,nodeResults)
+
+itemLookupByMap = (locale,itemIdMap,cb)->
+  itemIds = Object.keys(itemIdMap)
+  ops = []
+  for ids in sliceBySize(itemIds,10)
+    ops.push(opItemLookup(locale,ids,cb))
+  async.parallel ops,(err,results)->
+    if(err)
+      return cb(err)
+    itemMap = {}
+    for items in results
+      for item in items
+        itemMap[item.Itemid] = item
+    return cb(null,itemMap)
+
+sliceBySize = (items,maxItemPerSlice)->
+  result = []
+  for i in [0 .. (items.length-1)/maxItemPerSlice]
+    result.push(items.slice(i*maxItemPerSlice,Math.min((i+1)*maxItemPerSlice,items.length)))
+  return result
+
+opItemLookup = (locale,ids,cb)->
+  return (cb) -> 
+    itemLookup(locale,ids,cb)
+
+exports.itemLookup = itemLookup
+exports.nodeLookup = nodeLookup

@@ -7,39 +7,29 @@ script
   $(function(){
     jQuery.getJSON('/json/popular.json',function(data,textStatus) {
       if(textStatus == 'success') {
-        jQuery.each(data.NewReleases,function(key,value){
-          $box = $("<div/>").addClass("box");
-          $link = $("<a/>")
-            .attr("href",value.DetailPageURL)
-            .attr("target","_blank");
-          if(value.Images){
-            $link.append($("<img/>")
-              .attr("src",value.Images.Medium.URL));
-          }
-          $box.append($link);
-          //$box.append($("<span/>").text(value.ItemAttributes[0].Author[0]));
-          $(".boxes").append($box);
-        });
-        jQuery.each(data.TopSellers,function(key,value){
-          $box = $("<div/>").addClass("box");
-          $link = $("<a/>")
-            .attr("href",value.DetailPageURL)
-            .attr("target","_blank");
-          if(value.Images){
-            $link.append($("<img/>")
-              .attr("src",value.Images.Medium.URL));
-          }
-          $box.append($link);
-          //$box.append($("<span/>").text(value.ItemAttributes[0].Author[0]));
-          $(".boxes").append($box);
+        jQuery.each(data.itemMap,function(key,value){
+          addItem(value);
         });
         $('.boxes').imagesLoaded(function(){
           $('.boxes').masonry({
             itemSelector : '.box',
-            columnWidth : 250
+            columnWidth : 200
           });
           $('.loading').hide();
         });
       }
     });
   });
+  function addItem(value){
+    $box = $("<div/>").addClass("box");
+    $link = $("<a/>")
+      .attr("href",value.DetailPageURL)
+      .attr("target","_blank");
+    if(value.Images){
+      $link.append($("<img/>")
+        .attr("src",value.Images.Medium.URL));
+    }
+    $box.append($link);
+    //$box.append($("<span/>").text(value.ItemAttributes[0].Author[0]));
+    $(".boxes").append($box);
+  }
