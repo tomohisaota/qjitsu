@@ -16,8 +16,7 @@ app.use express.static(__dirname + '/public')
 app.use app.router
 
 # Routes
-app.get '/', routes.index
-app.get '/json/popular.json', routes.popular
+routes.loadRoute app
 
 # Socket.IO
 io.sockets.on 'connection', (socket) ->
