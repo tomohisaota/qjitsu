@@ -15,6 +15,7 @@ exports.nodeLookup = (locale,nodeids,responseGroup,cb)->
       'BrowseNodeId': nodeids.join(",")
       'ResponseGroup': responseGroup.join(",")
   }, (err, rawResult)->
+    #console.log JSON.stringify(rawResult,null," ")
     if (err)
       return cb(err)
     unless (rawResult.BrowseNodeLookupResponse?)
@@ -69,7 +70,7 @@ exports.itemLookup = (locale,itemIds,cb)->
   accessDate = new Date()
   newHelperForLocale(locale).execute 'ItemLookup', {
       'ItemId': itemIds.join(",")
-      'ResponseGroup': 'Medium,Images'
+      'ResponseGroup': 'Medium'
   }, (err, rawResult)->
     if (err)
       return cb(err)
