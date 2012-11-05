@@ -40,12 +40,15 @@ nodeLookup = (locale,nodeids,responseGroup,cb)->
             Name : child.Name[0]
           }
       if(nodeRaw.Ancestors)
+        Ancestor = nodeRaw.Ancestors[0].BrowseNode[0]
         node.Ancestors = []
-        for ancestor in nodeRaw.Ancestors[0].BrowseNode
-          node.Ancestors.push {
-            NodeId : ancestor.BrowseNodeId[0]
-            Name : ancestor.Name[0]
+        while(true)
+          node.Ancestors.unshift {
+            NodeId : Ancestor.BrowseNodeId[0]
+            Name : Ancestor.Name[0]
           }
+          break unless(Ancestor.Ancestors)
+          Ancestor = Ancestor.Ancestors[0].BrowseNode[0]
       if(nodeRaw.TopItemSet)
         for itemSetRaw in nodeRaw.TopItemSet
           if(itemSetRaw.Type[0] == "MostGifted")

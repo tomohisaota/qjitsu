@@ -18,6 +18,11 @@ head
     }
   != css('bootstrap-responsive')
   != css('masonry')
+  != js('jquery-1.8.2')
+  != js('bootstrap')
+  != js('jquery.masonry.min')
+  script(src="/socket.io/socket.io.js")
+  != js('socket_handlers')
 
 body
   .navbar.navbar-fixed-top.navbar-inverse
@@ -27,11 +32,6 @@ body
         //- ul.nav
         //-   li.active
         //-     a(href="#") Home
-  != js('jquery-1.8.2')
-  != js('bootstrap')
-  != js('jquery.masonry.min')
-  script(src="/socket.io/socket.io.js")
-  != js('socket_handlers')
 
   != body  
 | </html>
