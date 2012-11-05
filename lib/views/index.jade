@@ -1,48 +1,24 @@
 .container
   .boxes
-    .loading
-      |Loading...
+    -for value in locals.data.itemMap
+      .box
+        a(href = value.DetailPageURL,rel="popover",data-title=value.Title,target="_blank")
+          -if (value.Images)
+            img(src = value.Images.Medium.URL,width=value.Images.Medium.Width,height=value.Images.Medium.Height)
+          -else
+            img(src = "http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif",width=150,height=150)
             
 script
   $(function(){
-    jQuery.getJSON('/json/popular.json',function(data,textStatus) {
-      if(textStatus == 'success') {
-        jQuery.each(data.itemMap,function(key,value){
-          addItem(value);
-        });
-        $('.boxes').imagesLoaded(function(){
-          $('.boxes').masonry({
-            itemSelector : '.box'
-          });
-          $('a[rel=popover]').popover({
-            placement : "bottom",
-            trigger : "hover"
-          });
-          $('.loading').hide();
-        });
-      }
+    $('.boxes').hide()
+    $('.boxes').imagesLoaded(function(){
+      $('.boxes').show()
+      $('.boxes').masonry({
+        itemSelector : '.box'
+      });
+    });
+    $('a[rel=popover]').popover({
+      placement : "bottom",
+      trigger : "hover"
     });
   });
-  function addItem(value){
-    $box = $("<div/>").addClass("box");
-    $link = $("<a/>")
-      .attr("href",value.DetailPageURL)
-      .attr("rel","popover")
-      .attr("data-title",value.Title)
-      .attr("target","_blank");
-    if(value.Images){
-      $link.append($("<img/>")
-        .attr("src",value.Images.Medium.URL)
-        .attr("width",value.Images.Medium.Width)
-        .attr("height",value.Images.Medium.Height));
-    }
-    else{
-      $link.append($("<img/>")
-        .attr("src","http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif")
-        .attr("width",150)
-        .attr("height",150));
-
-    }
-    $box.append($link);
-    $(".boxes").append($box);
-  }
