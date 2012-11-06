@@ -1,4 +1,4 @@
-apachbridge = require("../lib/util/apacbridge")
+apachbridge = new require("../lib/util/apacbridge")()
 apacroot = require("apacroot")
 
 async = require("async")

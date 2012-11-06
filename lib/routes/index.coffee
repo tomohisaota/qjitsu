@@ -1,7 +1,7 @@
 async = require("async")
 
 apacroot = require("apacroot")
-apachbridge = require("../util/apacbridge")
+apachbridge = new require("../util/apacbridge")()
 
 exports.loadRoute = (app)->
   app.get '/', (req, res) ->
