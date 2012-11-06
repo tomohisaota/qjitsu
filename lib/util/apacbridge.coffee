@@ -198,8 +198,9 @@ class CachedApacBridge extends ApacBridge
       return super(locale,nodeids,responseGroup,cb)
     nodeid = nodeids[0]
     if(@nodeCache[nodeid])
-      logger.trace "node cache hit"
-      return cb(null,@nodeCache[nodeid])
+      if(new Date().getTime() - @nodeCache[nodeid][0].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
+        logger.trace "node cache hit"
+        return cb(null,@nodeCache[nodeid])
     super locale,nodeids,responseGroup,(err,result)=>
       if(err)
         return cb(err)
@@ -212,10 +213,11 @@ class CachedApacBridge extends ApacBridge
     cacheHitMap = {}
     itemIds = Object.keys(itemIdMap)
     for itemId in itemIds
-      if(@itemCache[itemId])
-        logger.trace "item cache hit #{itemId}"
-        cacheHitMap[itemId] = @itemCache[itemId]
-        delete itemIdMap[itemId]
+      continue unless(@itemCache[itemId])
+      continue unless(new Date().getTime() - @itemCache[itemId].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
+      logger.trace "item cache hit #{itemId}"
+      cacheHitMap[itemId] = @itemCache[itemId]
+      delete itemIdMap[itemId]
     super locale,itemIdMap,(err,itemMap)=>
       if(err)
         return cb(err)
