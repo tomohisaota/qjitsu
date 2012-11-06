@@ -3,8 +3,12 @@ stylus = require 'stylus'
 routes = require './routes'
 socketio = require 'socket.io'
 log4js = require("log4js")
-log4js.setGlobalLogLevel("TRACE")
 
+if(process.env.NODE_ENV == "production")
+  log4js.setGlobalLogLevel("INFO")
+else
+  log4js.setGlobalLogLevel("TRACE")
+  
 app = express.createServer()
 io = socketio.listen(app)
 

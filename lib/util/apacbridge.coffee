@@ -1,26 +1,37 @@
 logger = require("log4js").getLogger("util.apacbridge")
 
+apac = require('apac')
 apacroot = require("apacroot")
 async = require("async")
 
 class ApacBridge
-  newHelperForLocale : (locale)->
-    OperationHelper = require('apac').OperationHelper
-    return new OperationHelper {
-        awsId:     process.env.APAC_ACCESS
-        awsSecret: process.env.APAC_SECRET
-        assocId:   process.env.APAC_ASSOCID
+  config : null
+  
+  constructor: (config)->
+    unless(config)
+      config = {
+        APAC_ACCESS:  process.env.APAC_ACCESS
+        APAC_SECRET:  process.env.APAC_SECRET
+        APAC_ASSOCID: process.env.APAC_ASSOCID
+      }
+    @config = config
+  
+  newHelperForLocale : (locale)=>
+    logger.trace "newHelperForLocale(#{locale})"
+    return new apac.OperationHelper {
+        awsId:     @config.APAC_ACCESS
+        awsSecret: @config.APAC_SECRET
+        assocId:   @config.APAC_ASSOCID
         endPoint:  apacroot.endpoint(locale)
     }
 
-  nodeLookup : (locale,nodeids,responseGroup,cb)->
-    logger.trace("nodeLookup")
+  nodeLookup : (locale,nodeids,responseGroup,cb)=>
+    logger.trace "nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
     accessDate = new Date()
     @newHelperForLocale(locale).execute 'BrowseNodeLookup', {
         'BrowseNodeId': nodeids.join(",")
         'ResponseGroup': responseGroup.join(",")
-    }, (err, rawResult)->
-      #console.log JSON.stringify(rawResult,null," ")
+    }, (err, rawResult)=>
       if (err)
         return cb(err)
       unless (rawResult.BrowseNodeLookupResponse?)
@@ -74,20 +85,22 @@ class ApacBridge
         Nodes.push(node)
       return cb(null,Nodes)
 
-  itemLookup : (locale,itemIds,cb)->
-    logger.trace("itemLookup")
+  itemLookup : (locale,itemIds,cb)=>
+    logger.trace("itemLookup(#{locale},#{itemIds},cb)")
     accessDate = new Date()
     @newHelperForLocale(locale).execute 'ItemLookup', {
         'ItemId': itemIds.join(",")
         'ResponseGroup': 'Medium'
-    }, (err, rawResult)->
+    }, (err, rawResult)=>
       if (err)
         return cb(err)
-      #console.log JSON.stringify(rawResult,null," ")
       unless (rawResult.ItemLookupResponse?)
         return cb(new Error("Failed to parse response"))
-      itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
       Items = []
+      logger.trace JSON.stringify(rawResult,null," ")
+      unless(rawResult.ItemLookupResponse.Items[0].Item)
+        return cb(null,Items)
+      itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
       for itemRaw in itemsRaw
         item = {
           Locale : locale
@@ -115,12 +128,11 @@ class ApacBridge
         Items.push(item)
       return cb(null,Items)
     
-  nodeLookupFull : (locale,nodeids,cb)->
-    logger.trace("nodeLookupFull")
+  nodeLookupFull : (locale,nodeids,cb)=>
+    logger.trace("nodeLookupFull(#{locale},#{nodeids},cb)")
     @nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)=>
       if(err)
         return cb(err)
-      #console.log nodeResults
       # Create unique set of all item ids to lookup
       itemIdMap = {}
       for nodeResult in nodeResults
@@ -129,7 +141,7 @@ class ApacBridge
           for id in ids
             itemIdMap[id] = {}
     
-      @itemLookupByMap locale,itemIdMap,(err,itemMap)->
+      @itemLookupByMap locale,itemIdMap,(err,itemMap)=>
         if(err)
           return cb(err)
         for nodeResult in nodeResults
@@ -141,14 +153,12 @@ class ApacBridge
         cb(null,nodeResults)
 
   itemLookupByMap : (locale,itemIdMap,cb)=>
-    logger.trace("itemLookupByMap")
+    logger.trace("itemLookupByMap(#{locale},#{itemIdMap},cb)")
     itemIds = Object.keys(itemIdMap)
     ops = []
     for ids in @sliceBySize(itemIds,10)
       ops.push(@opItemLookup(locale,ids,cb))
-    console.log itemIds
-    console.log @sliceBySize(itemIds,10)
-    async.parallel ops,(err,results)->
+    async.parallel ops,(err,results)=>
       if(err)
         return cb(err)
       itemMap = {}
@@ -157,7 +167,7 @@ class ApacBridge
           itemMap[item.Itemid] = item
       return cb(null,itemMap)
 
-  sliceBySize : (items,maxItemPerSlice)->
+  sliceBySize : (items,maxItemPerSlice)=>
     result = []
     if(items.length == 0)
       return result
@@ -165,9 +175,52 @@ class ApacBridge
       result.push(items.slice(i*maxItemPerSlice,Math.min((i+1)*maxItemPerSlice,items.length)))
     return result
 
-  opItemLookup : (locale,ids,cb)->
+  opItemLookup : (locale,ids,cb)=>
     return (cb) => 
       @itemLookup(locale,ids,cb)
       
-module.exports = (config,cacheEngine)->
-  return new ApacBridge(config,cacheEngine)
+class CachedApacBridge extends ApacBridge
+  nodeCache : null
+  itemCache : null
+  
+  constructor: (config)->
+    super(config)
+    @nodeCache = {}
+    @itemCache = {}
+    
+  nodeLookup : (locale,nodeids,responseGroup,cb)=>
+    logger.trace "Cached nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
+    if(nodeids.length != 1)
+      return super(locale,nodeids,responseGroup,cb)
+    nodeid = nodeids[0]
+    if(@nodeCache[nodeid])
+      logger.trace "node cache hit"
+      return cb(null,@nodeCache[nodeid])
+    super locale,nodeids,responseGroup,(err,result)=>
+      if(err)
+        return cb(err)
+      logger.trace "node cache save"
+      @nodeCache[nodeid] = result
+      cb(err,result)
+  
+  itemLookupByMap : (locale,itemIdMap,cb)=>
+    logger.trace("itemLookupByMap(#{locale},#{itemIdMap},cb)")
+    cacheHitMap = {}
+    itemIds = Object.keys(itemIdMap)
+    for itemId in itemIds
+      if(@itemCache[itemId])
+        logger.trace "item cache hit #{itemId}"
+        cacheHitMap[itemId] = @itemCache[itemId]
+        delete itemIdMap[itemId]
+    super locale,itemIdMap,(err,itemMap)=>
+      if(err)
+        return cb(err)
+      for itemId,item of itemMap
+        logger.trace "item cache save #{itemId}"
+        @itemCache[itemId] = item
+        cacheHitMap[itemId] = item
+      cb(null,cacheHitMap)
+
+    
+module.exports = (config)->
+  return new CachedApacBridge(config)

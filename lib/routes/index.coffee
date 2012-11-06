@@ -1,3 +1,5 @@
+logger = require("log4js").getLogger("routes.index")
+
 async = require("async")
 
 apacroot = require("apacroot")
@@ -16,4 +18,5 @@ exports.loadRoute = (app)->
     apachbridge.nodeLookupFull locale,[nodeid],(err,result)->
       if (err)
         console.log('Error: ' + err + "\n")
+      logger.trace JSON.stringify(result[0],null," ")
       res.render 'index',{data:result[0]}

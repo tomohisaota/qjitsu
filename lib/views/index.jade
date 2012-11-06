@@ -13,22 +13,24 @@
           span(class="divider") /
           a(href="#") #{locals.data.Name}
       - if(locals.data.Children)
-        .btn-group
-          a(class="btn dropdown-toggle", data-toggle="dropdown",href="#")
-            span(class="caret")
-          ul(class="dropdown-menu")
-            -for child in locals.data.Children
-              li 
-                a(href="/#{locals.data.Locale}/#{child.NodeId}") #{child.Name}
+        ul(class="breadcrumb")
+          -for(i=0 ; i < locals.data.Children.length ; i++)
+            -var child = locals.data.Children[i]
+            li
+              -if(i!=0)
+                span(class="divider") |
+              a(href="/#{locals.data.Locale}/#{child.NodeId}") #{child.Name}
+          
 
   .boxes
     -for value in locals.data.itemMap
-      .box
-        a(href = value.DetailPageURL,rel="popover",data-title=value.Title,target="_blank")
-          -if (value.Images)
-            img(src = value.Images.Medium.URL,width=value.Images.Medium.Width,height=value.Images.Medium.Height)
-          -else
-            img(src = "http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif",width=150,height=150)
+      -if(value)
+        .box
+          a(href = value.DetailPageURL,rel="popover",data-title=value.Title,target="_blank")
+            -if (value.Images)
+              img(src = value.Images.Medium.URL,width=value.Images.Medium.Width,height=value.Images.Medium.Height)
+            -else
+              img(src = "http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif",width=150,height=150)
             
 script
   $(function(){
