@@ -3,15 +3,18 @@
     .span12
       ul(class="breadcrumb")
         li
-          a(href="/") #{locals.data.Locale}
+          a(href="/")
+            span(class="divider") /
+        li
+          a(href="/#{locals.data.Locale}") #{locals.data.Locale}
         - if(locals.data.Ancestors)
           - for Ancestor in locals.data.Ancestors
             li
               span(class="divider") /
               a(href="/#{locals.data.Locale}/#{Ancestor.NodeId}") #{Ancestor.Name}
-        li
+        li(class="active")
           span(class="divider") /
-          a(href="#") #{locals.data.Name}
+          |#{locals.data.Name}
       - if(locals.data.Children)
         ul(class="breadcrumb")
           -for(i=0 ; i < locals.data.Children.length ; i++)

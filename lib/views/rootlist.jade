@@ -2,8 +2,11 @@
   .row
     .span12
       ul(class="breadcrumb")
-        li
-          a(href="/") #{locals.locale}
+        li 
+          a(href="/")
+            span(class="divider") /
+        li(class="active")
+          |#{locals.locale}
     
       ul(class="breadcrumb")
         -for(i=0 ; i<locals.rootCategories.length ; i++)

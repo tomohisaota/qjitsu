@@ -2,7 +2,8 @@
   .row
     .span12
       ul(class="breadcrumb")
-        li
+        li(class="active") 
+          span(class="divider") /
       ul(class="breadcrumb")
         -for(i=0 ; i<locals.locales.length ; i++)
           - locale = locals.locales[i]
