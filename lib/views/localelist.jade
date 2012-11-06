@@ -1,0 +1,33 @@
+.container
+  .row
+    .span12
+      ul(class="breadcrumb")
+        li
+      ul(class="breadcrumb")
+        -for(i=0 ; i<locals.locales.length ; i++)
+          - locale = locals.locales[i]
+          li
+            - if(i != 0)
+              span(class="divider") |
+            a(href="/#{locale.locale}") #{locale.locale}
+
+  .row
+    .span12
+      h2 Available Locales
+  
+  .row
+    .span12
+      table(class="table table-bordered table-hover table-condensed")
+        tr
+          th Country
+          th Locale
+          th Endpoint
+        - for locale in locals.locales
+          tr
+            td
+              a(href="/#{locale.locale}", class="widelink") #{locale.country}
+            td
+              a(href="/#{locale.locale}", class="widelink") #{locale.locale}
+            td 
+              a(href="/#{locale.locale}", class="widelink") #{locale.endpoint}
+          

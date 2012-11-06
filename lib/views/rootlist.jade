@@ -1,0 +1,32 @@
+.container
+  .row
+    .span12
+      ul(class="breadcrumb")
+        li
+          a(href="/") #{locals.locale}
+    
+      ul(class="breadcrumb")
+        -for(i=0 ; i<locals.rootCategories.length ; i++)
+          - rootCategory = locals.rootCategories[i]
+          li
+            - if(i != 0)
+              span(class="divider") |
+            a(href="/#{locale}/#{rootCategory.NodeId}") #{rootCategory.Name}
+            
+  .row
+    .span12
+      h3 Top Level Browse Node IDs
+
+  .row
+    .span12
+      table(class="table table-bordered table-hover table-condensed")
+        tr
+          th
+          th Browse Node ID
+        - for category in locals.rootCategories
+          tr
+            td 
+              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.Name}
+            td 
+              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.NodeId}
+

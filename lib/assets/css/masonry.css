@@ -35,3 +35,9 @@
   padding : 2px;
   margin : 5px;
 }
+
+a.widelink {
+   display: block;
+   width: 100%;
+   text-decoration: none;
+}

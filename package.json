@@ -1,6 +1,6 @@
 {
   "name": "qjitsu",
-  "version": "0.0.1-17",
+  "version": "0.0.1-20",
   "private": true,
   "dependencies": {
     "async": "*",
@@ -12,7 +12,7 @@
     "socket.io": "0.9.x",
     "log4js": "*",
     "apac": "git://github.com/tomohisaota/node-apac.git",
-    "apacroot": "0.0.3"
+    "apacroot": "0.0.7"
   },
   "devDependencies": {
     "mocha": "*",

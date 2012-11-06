@@ -36,6 +36,7 @@ class ApacBridge
         return cb(err)
       unless (rawResult.BrowseNodeLookupResponse?)
         return cb(new Error("Failed to parse response"))
+      logger.trace JSON.stringify(rawResult,null," ")
       rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
       Nodes = []
       for nodeRaw in rawResult
@@ -58,10 +59,13 @@ class ApacBridge
           Ancestor = nodeRaw.Ancestors[0].BrowseNode[0]
           node.Ancestors = []
           while(true)
-            node.Ancestors.unshift {
-              NodeId : Ancestor.BrowseNodeId[0]
-              Name : Ancestor.Name[0]
-            }
+            temp = {}
+            temp.NodeId = Ancestor.BrowseNodeId[0]
+            if(Ancestor.Name)
+              temp.Name =Ancestor.Name[0]
+            else
+              temp.Name =Ancestor.BrowseNodeId[0]
+            node.Ancestors.unshift temp
             break unless(Ancestor.Ancestors)
             Ancestor = Ancestor.Ancestors[0].BrowseNode[0]
         if(nodeRaw.TopItemSet)

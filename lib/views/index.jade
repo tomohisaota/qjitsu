@@ -3,7 +3,7 @@
     .span12
       ul(class="breadcrumb")
         li
-          |#{locals.data.Locale}
+          a(href="/") #{locals.data.Locale}
         - if(locals.data.Ancestors)
           - for Ancestor in locals.data.Ancestors
             li
