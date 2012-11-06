@@ -12,16 +12,14 @@
         li
           span(class="divider") /
           a(href="#") #{locals.data.Name}
-        - if(locals.data.Children)
-          li
-            span(class="divider") /
-            .btn-group
-              a(class="btn dropdown-toggle", data-toggle="dropdown",href="#")
-                span(class="caret")
-              ul(class="dropdown-menu")
-                -for child in locals.data.Children
-                  li 
-                    a(href="/#{locals.data.Locale}/#{child.NodeId}") #{child.Name}
+      - if(locals.data.Children)
+        .btn-group
+          a(class="btn dropdown-toggle", data-toggle="dropdown",href="#")
+            span(class="caret")
+          ul(class="dropdown-menu")
+            -for child in locals.data.Children
+              li 
+                a(href="/#{locals.data.Locale}/#{child.NodeId}") #{child.Name}
 
   .boxes
     -for value in locals.data.itemMap

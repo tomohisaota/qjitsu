@@ -2,6 +2,8 @@ express = require 'express'
 stylus = require 'stylus'
 routes = require './routes'
 socketio = require 'socket.io'
+log4js = require("log4js")
+log4js.setGlobalLogLevel("TRACE")
 
 app = express.createServer()
 io = socketio.listen(app)

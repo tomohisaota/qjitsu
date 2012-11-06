@@ -1,3 +1,5 @@
+logger = require("log4js").getLogger("util.apacbridge")
+
 apacroot = require("apacroot")
 async = require("async")
 
@@ -11,6 +13,7 @@ newHelperForLocale = (locale)->
   }
 
 nodeLookup = (locale,nodeids,responseGroup,cb)->
+  logger.trace("nodeLookup")
   accessDate = new Date()
   newHelperForLocale(locale).execute 'BrowseNodeLookup', {
       'BrowseNodeId': nodeids.join(",")
@@ -71,6 +74,7 @@ nodeLookup = (locale,nodeids,responseGroup,cb)->
     return cb(null,Nodes)
 
 itemLookup = (locale,itemIds,cb)->
+  logger.trace("itemLookup")
   accessDate = new Date()
   newHelperForLocale(locale).execute 'ItemLookup', {
       'ItemId': itemIds.join(",")
@@ -111,6 +115,7 @@ itemLookup = (locale,itemIds,cb)->
     return cb(null,Items)
     
 exports.nodeLookupFull = (locale,nodeids,cb)->
+  logger.trace("nodeLookupFull")
   nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)->
     if(err)
       return cb(err)
@@ -135,6 +140,7 @@ exports.nodeLookupFull = (locale,nodeids,cb)->
       cb(null,nodeResults)
 
 itemLookupByMap = (locale,itemIdMap,cb)->
+  logger.trace("itemLookupByMap")
   itemIds = Object.keys(itemIdMap)
   ops = []
   for ids in sliceBySize(itemIds,10)
