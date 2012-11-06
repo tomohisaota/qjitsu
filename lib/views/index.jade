@@ -44,4 +44,5 @@ script
       trigger : "hover"
     });
     $('.dropdown-toggle').dropdown();
+    $(document).on('touchstart.dropdown', '.dropdown-menu', function(e) { e.stopPropagation(); });
   });
