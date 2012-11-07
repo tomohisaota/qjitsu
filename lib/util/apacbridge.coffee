@@ -94,7 +94,7 @@ class ApacBridge
     accessDate = new Date()
     @newHelperForLocale(locale).execute 'ItemLookup', {
         'ItemId': itemIds.join(",")
-        'ResponseGroup': 'Medium'
+        'ResponseGroup': 'Small,Images'
     }, (err, rawResult)=>
       if (err)
         return cb(err)
