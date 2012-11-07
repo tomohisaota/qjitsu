@@ -17,7 +17,7 @@ class ApacBridge
     @config = config
   
   newHelperForLocale : (locale)=>
-    logger.trace "newHelperForLocale(#{locale})"
+    #logger.trace "newHelperForLocale(#{locale})"
     return new apac.OperationHelper {
         awsId:     @config.APAC_ACCESS
         awsSecret: @config.APAC_SECRET
@@ -36,7 +36,7 @@ class ApacBridge
         return cb(err)
       unless (rawResult.BrowseNodeLookupResponse?)
         return cb(new Error("Failed to parse response"))
-      logger.trace JSON.stringify(rawResult,null," ")
+      #logger.trace JSON.stringify(rawResult,null," ")
       rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
       Nodes = []
       for nodeRaw in rawResult
@@ -101,14 +101,14 @@ class ApacBridge
       unless (rawResult.ItemLookupResponse?)
         return cb(new Error("Failed to parse response"))
       Items = []
-      logger.trace JSON.stringify(rawResult,null," ")
+      #logger.trace JSON.stringify(rawResult,null," ")
       unless(rawResult.ItemLookupResponse.Items[0].Item)
         return cb(null,Items)
       itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
       for itemRaw in itemsRaw
         item = {
           Locale : locale
-          Itemid : itemRaw.ASIN[0]
+          ItemId : itemRaw.ASIN[0]
           DetailPageURL : itemRaw.DetailPageURL[0]
           Timestamp : accessDate
         }
@@ -131,7 +131,7 @@ class ApacBridge
           }
         Items.push(item)
       return cb(null,Items)
-    
+      
   nodeLookupFull : (locale,nodeids,cb)=>
     logger.trace("nodeLookupFull(#{locale},#{nodeids},cb)")
     @nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)=>
@@ -144,10 +144,14 @@ class ApacBridge
           continue unless(ids)
           for id in ids
             itemIdMap[id] = {}
-    
-      @itemLookupByMap locale,itemIdMap,(err,itemMap)=>
+      itemIds = Object.keys(itemIdMap)
+
+      @itemLookup locale,itemIds,(err,items)=>
         if(err)
           return cb(err)
+        itemMap = {}
+        for item in items
+          itemMap[item.ItemId] = item
         for nodeResult in nodeResults
           nodeResult.itemMap = {}
           for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
@@ -155,21 +159,46 @@ class ApacBridge
             for id in ids
               nodeResult.itemMap[id] = itemMap[id]
         cb(null,nodeResults)
-
-  itemLookupByMap : (locale,itemIdMap,cb)=>
-    logger.trace("itemLookupByMap(#{locale},#{itemIdMap},cb)")
-    itemIds = Object.keys(itemIdMap)
+          
+# Amazon Product Advertising API has limit for number of items in 1 query
+# This class slices id list, and run query in paralle
+class ApacBridgeWithSlicing extends ApacBridge
+  MAX_NODE_LOOKUP : 10
+  MAX_ITEM_LOOKUP : 10
+  
+  nodeLookup : (locale,nodeids,responseGroup,cb)=>
+    if(nodeids.length <= @MAX_NODE_LOOKUP)
+      # Do nothing if ids can processed in single query
+      return super(locale,nodeids,responseGroup,cb)
+    logger.trace "Slicing nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
     ops = []
-    for ids in @sliceBySize(itemIds,10)
-      ops.push(@opItemLookup(locale,ids,cb))
+    for ids in @sliceBySize(nodeids,@MAX_NODE_LOOKUP)
+      ops.push(@opNodeLookupWithoutCache(locale,ids,responseGroup,cb))
     async.parallel ops,(err,results)=>
       if(err)
         return cb(err)
-      itemMap = {}
-      for items in results
-        for item in items
-          itemMap[item.Itemid] = item
-      return cb(null,itemMap)
+      resultAll = []
+      for result in results
+        for node in result
+          resultAll.push(node)
+      return cb(null,resultAll)
+
+  itemLookup : (locale,itemIds,cb)=>
+    if(itemIds.length <= @MAX_ITEM_LOOKUP)
+      # Do nothing if ids can processed in single query
+      return super(locale,itemIds,cb)
+    logger.trace("Slicing itemLookup(#{locale},#{itemIds},cb)")
+    ops = []
+    for ids in @sliceBySize(itemIds,@MAX_ITEM_LOOKUP)
+      ops.push(@opItemLookupWithoutCache(locale,ids,cb))
+    async.parallel ops,(err,results)=>
+      if(err)
+        return cb(err)
+      resultAll = []
+      for result in results
+        for item in result
+          resultAll.push(item)
+      return cb(null,resultAll)
 
   sliceBySize : (items,maxItemPerSlice)=>
     result = []
@@ -179,11 +208,15 @@ class ApacBridge
       result.push(items.slice(i*maxItemPerSlice,Math.min((i+1)*maxItemPerSlice,items.length)))
     return result
 
-  opItemLookup : (locale,ids,cb)=>
+  opNodeLookupWithoutCache : (locale,nodeids,responseGroup,cb)=>
     return (cb) => 
-      @itemLookup(locale,ids,cb)
-      
-class CachedApacBridge extends ApacBridge
+      @nodeLookup(locale,nodeids,responseGroup,cb,true)
+
+  opItemLookupWithoutCache : (locale,ids,cb)=>
+    return (cb) => 
+      @itemLookup(locale,ids,cb,true)
+
+class CachedApacBridge extends ApacBridgeWithSlicing
   nodeCache : null
   itemCache : null
   
@@ -192,41 +225,53 @@ class CachedApacBridge extends ApacBridge
     @nodeCache = {}
     @itemCache = {}
     
-  nodeLookup : (locale,nodeids,responseGroup,cb)=>
-    logger.trace "Cached nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
-    if(nodeids.length != 1)
+  nodeLookup : (locale,nodeids,responseGroup,cb,noCache)=>
+    if(noCache)
       return super(locale,nodeids,responseGroup,cb)
-    nodeid = nodeids[0]
-    if(@nodeCache[nodeid])
-      if(new Date().getTime() - @nodeCache[nodeid][0].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
-        logger.trace "node cache hit"
-        return cb(null,@nodeCache[nodeid])
-    super locale,nodeids,responseGroup,(err,result)=>
+    logger.trace "Cached nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
+    nodeIdsToFetch = []
+    resultAll = []
+    for nodeId in nodeids
+      if(@nodeCache[nodeId])
+        if(new Date().getTime() - @nodeCache[nodeId].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
+          logger.trace "node cache hit #{nodeId}"
+          resultAll.push(@nodeCache[nodeId])
+          continue
+      nodeIdsToFetch.push(nodeId)
+    if(nodeIdsToFetch.length == 0)
+      return cb(null,resultAll)
+    super locale,nodeIdsToFetch,responseGroup,(err,nodes)=>
       if(err)
         return cb(err)
-      logger.trace "node cache save"
-      @nodeCache[nodeid] = result
-      cb(err,result)
-  
-  itemLookupByMap : (locale,itemIdMap,cb)=>
-    logger.trace("itemLookupByMap(#{locale},#{itemIdMap},cb)")
-    cacheHitMap = {}
-    itemIds = Object.keys(itemIdMap)
+      for node in nodes
+        logger.trace "node cache save #{node.NodeId}"
+        @nodeCache[node.NodeId] = node
+        resultAll.push(node)
+      return cb(null,resultAll)
+      
+  itemLookup : (locale,itemIds,cb,noCache)=>
+    if(noCache)
+      return super(locale,itemIds,cb)
+    logger.trace("Cached itemLookup(#{locale},#{itemIds},cb)")
+    itemIdsToFetch = []
+    resultAll = []
     for itemId in itemIds
-      continue unless(@itemCache[itemId])
-      continue unless(new Date().getTime() - @itemCache[itemId].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
-      logger.trace "item cache hit #{itemId}"
-      cacheHitMap[itemId] = @itemCache[itemId]
-      delete itemIdMap[itemId]
-    super locale,itemIdMap,(err,itemMap)=>
+      if(@itemCache[itemId])
+        if(new Date().getTime() - @itemCache[itemId].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
+          logger.trace "item cache hit #{itemId}"
+          resultAll.push(@itemCache[itemId])
+          continue
+      itemIdsToFetch.push(itemId)
+    if(itemIdsToFetch.length == 0)
+      return cb(null,resultAll)
+    super locale,itemIdsToFetch,(err,items)=>
       if(err)
         return cb(err)
-      for itemId,item of itemMap
-        logger.trace "item cache save #{itemId}"
-        @itemCache[itemId] = item
-        cacheHitMap[itemId] = item
-      cb(null,cacheHitMap)
-
+      for item in items
+        logger.trace "item cache save #{item.ItemId}"
+        @itemCache[item.ItemId] = item
+        resultAll.push(item)
+      return cb(null,resultAll)
     
 module.exports = (config)->
   return new CachedApacBridge(config)
