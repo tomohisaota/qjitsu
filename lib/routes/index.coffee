@@ -40,20 +40,67 @@ exports.loadRoute = (app)->
     locale = req.params.locale
     for l in apacroot.locales()
       if(l == locale)
-        categories = apacroot.categories(locale)
-        rootCategories = []
-        for category in categories
-          rootCategories.push {
-            Name : category
-            NodeId : apacroot.rootnode(locale,category)
+        apachbridge.nodeLookup locale,getRootNodes(locale),["BrowseNodeInfo"],(err,nodeResults)=>
+          rootCategories = []
+          for node in nodeResults
+            if(node.isRoot and node.Ancestors)
+              rootCategories.push {
+                Name : node.Ancestors[node.Ancestors.length - 1].Name
+                NodeId : node.NodeId
+                isRoot : true
+              }
+            else
+              rootCategories.push {
+                Name : node.Name
+                NodeId : node.NodeId
+                isRoot : false
+              }
+          res.render 'rootlist',{
+            locale         : locale
+            rootCategories : rootCategories
+            title          : "QJITSU /#{locale}"
           }
-        res.render 'rootlist',{
-          locale         : locale
-          rootCategories : rootCategories
-          title          : "QJITSU /#{locale}"
-        }
+          return
         return
     res.redirect "/"
+    
+  getRootNodes = (locale)->
+    if(locale == "JP")
+      return [
+        465610,
+        52231011,
+        2250739051 ,
+        562002,
+        562032,
+        701040,
+        2129039051,
+        2123630051,
+        637872,
+        3210991,
+        2127210051,
+        637630,
+        86732051,
+        3839151,
+        2127213051,
+        57240051,
+        161669011,
+        52391051,
+        344919011,
+        13299551,
+        2277722051,
+        361245011,
+        2016927051,
+        85896051,
+        331952011,
+        14315361,
+        2016930051,
+        2017305051,
+        2277725051
+        ]
+    ids = []
+    for category in apacroot.categories(locale)
+      ids.push(apacroot.rootnode(locale,category))
+    return ids
   
   app.get "/:locale/:nodeid", (req, res) ->  
     locale = req.params.locale

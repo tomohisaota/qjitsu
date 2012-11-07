@@ -24,12 +24,15 @@
     .span12
       table(class="table table-bordered table-hover table-condensed")
         tr
-          th
           th Browse Node ID
+          th Name
+          th isRoot
         - for category in locals.rootCategories
           tr
             td 
+              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.NodeId}
+            td 
               a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.Name}
             td 
-              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.NodeId}
+              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.isRoot}
 
