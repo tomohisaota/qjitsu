@@ -24,16 +24,16 @@
                 span(class="divider") |
               a(href="/#{locals.data.Locale}/#{child.NodeId}") #{child.Name}
           
-
-  .boxes
-    -for value in locals.data.itemMap
-      -if(value)
-        .box
-          a(href = value.DetailPageURL,rel="popover",data-title=value.Title,target="_blank")
-            -if (value.Images)
-              img(src = value.Images.Medium.URL,width=value.Images.Medium.Width,height=value.Images.Medium.Height)
-            -else
-              img(src = "http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif",width=150,height=150)
+  -if (locals.data.itemMap)
+    .boxes
+      -for value in locals.data.itemMap
+        -if(value)
+          .box
+            a(href = value.DetailPageURL,rel="popover",data-title=value.Title,target="_blank")
+              -if (value.Images)
+                img(src = value.Images.Medium.URL,width=value.Images.Medium.Width,height=value.Images.Medium.Height)
+              -else
+                img(src = "http://ec1.images-amazon.com/images/G/09/en_JP/nav2/dp/no-image-no-ciu._AA250_.gif",width=150,height=150)
             
 script
   $(function(){
