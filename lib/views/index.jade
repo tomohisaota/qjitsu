@@ -42,6 +42,12 @@ script
     $(".boxes").hide()
     jQuery.getJSON("/api/#{locals.data.Locale}/#{locals.data.NodeId}",function(items,textStatus) {
       if(textStatus == 'success') {
+        items.sort(function(a,b){
+          if(a.Title === b.Title){
+            return 0;
+          }
+          return a.Title > b.Title ? 1 : -1;
+        });
         jQuery.each(items,function(index,value){
           $box = $("<div/>").addClass("box");
           $link = $("<a/>")
