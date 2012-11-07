@@ -4,9 +4,19 @@ async = require("async")
 
 class Cacher
   cache : null
+  GC_INTERVAL : 1000 * 60 * 60
   
   constructor: ->
     @cache = {}
+    gc = ()=>
+      logger.trace "Running GC"
+      now = new Date().getTime()
+      keys = Object.keys(@cache)
+      for key in keys
+        if(now > @cache[key].expires)
+          logger.trace "deleting expired item for key #{key}"
+          delete @cache[key]
+    setInterval(gc,@GC_INTERVAL)
   
   set : (key,value,ttl,cb)=>
     logger.trace("set(#{key},#{value},#{ttl},cb)")
