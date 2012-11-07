@@ -45,6 +45,7 @@ script
         jQuery.each(items,function(index,value){
           $box = $("<div/>").addClass("box");
           $link = $("<a/>")
+            .attr("class","widelink")
             .attr("href",value.DetailPageURL)
             .attr("target","_blank");
           if(value.Images){
@@ -61,6 +62,7 @@ script
               .attr("height",150)
               );
           }
+          $link.append($("<div/>").text(value.Title))
           $box.append($link);
           $(".boxes").append($box);
         });
