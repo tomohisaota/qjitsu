@@ -21,6 +21,21 @@ exports.loadRoute = (app)->
       title   : "QJITSU"
     }
 
+  app.get '/api/:locale/:nodeid', (req, res) ->
+    res.contentType('application/json; charset=utf-8')
+    locale = req.params.locale
+    nodeid = req.params.nodeid
+    apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)=>
+      itemIdMap = {}
+      for nodeResult in nodeResults
+        for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
+          continue unless(ids)
+          for id in ids
+            itemIdMap[id] = {}
+      itemIds = Object.keys(itemIdMap)
+      apachbridge.itemLookup locale,itemIds,['Small','Images'],(err,items)=>
+        res.send(JSON.stringify(items,null," "))
+
   app.get '/:locale', (req, res) ->
     locale = req.params.locale
     for l in apacroot.locales()
@@ -43,7 +58,7 @@ exports.loadRoute = (app)->
   app.get "/:locale/:nodeid", (req, res) ->  
     locale = req.params.locale
     nodeid = req.params.nodeid
-    apachbridge.nodeLookupFull locale,[nodeid],(err,result)->
+    apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
       if (err)
         console.log('Error: ' + err + "\n")
         res.redirect "/#{locale}"
