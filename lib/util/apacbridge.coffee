@@ -169,7 +169,6 @@ class ApacBridgeWithSlicing extends ApacBridge
     if(nodeids.length <= @MAX_NODE_LOOKUP)
       # Do nothing if ids can processed in single query
       return super(locale,nodeids,responseGroup,cb)
-    logger.trace "Slicing nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
     ops = []
     for ids in @sliceBySize(nodeids,@MAX_NODE_LOOKUP)
       ops.push(@opNodeLookupWithoutCache(locale,ids,responseGroup,cb))

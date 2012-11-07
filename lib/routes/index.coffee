@@ -58,3 +58,19 @@ exports.loadRoute = (app)->
         data:result[0]
         title          : "QJITSU #{title}"
       }
+      
+      # Asynchronous Prefetch
+      # Prefect ancestors and children
+      # it actually reduce the number of request
+      prefetchIds = []
+      if(result[0].Ancestors)
+        for node in result[0].Ancestors
+          prefetchIds.push(node.NodeId)
+      if(result[0].Children)
+        for node in result[0].Children
+          prefetchIds.push(node.NodeId)
+      if(prefetchIds.length > 30)
+        prefetchIds = prefetchIds.slice(0,30)
+      apachbridge.nodeLookup locale,prefetchIds,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
+        #Do nothing
+      
