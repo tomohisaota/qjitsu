@@ -17,7 +17,8 @@ exports.loadRoute = (app)->
         country  : apacroot.country(locale)
       })
     res.render 'localelist',{
-      locales:locales
+      locales : locales
+      title   : "QJITSU"
     }
 
   app.get '/:locale', (req, res) ->
@@ -34,6 +35,7 @@ exports.loadRoute = (app)->
         res.render 'rootlist',{
           locale         : locale
           rootCategories : rootCategories
+          title          : "QJITSU /#{locale}"
         }
         return
     res.redirect "/"
@@ -44,5 +46,15 @@ exports.loadRoute = (app)->
     apachbridge.nodeLookupFull locale,[nodeid],(err,result)->
       if (err)
         console.log('Error: ' + err + "\n")
-      logger.trace JSON.stringify(result[0],null," ")
-      res.render 'index',{data:result[0]}
+        res.redirect "/#{locale}"
+        return
+      #logger.trace JSON.stringify(result[0],null," ")
+      title = "/#{locale}"
+      if(result[0].Ancestors)
+        for Ancestor in result[0].Ancestors
+          title = "#{title}/#{Ancestor.Name}"
+      title = "#{title}/#{result[0].Name}"
+      res.render 'index',{
+        data:result[0]
+        title          : "QJITSU #{title}"
+      }
