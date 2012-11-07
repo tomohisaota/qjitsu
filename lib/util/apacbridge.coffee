@@ -26,7 +26,7 @@ class ApacBridge
     }
 
   nodeLookup : (locale,nodeids,responseGroup,cb)=>
-    logger.trace "nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
+    logger.trace "nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
     accessDate = new Date()
     @newHelperForLocale(locale).execute 'BrowseNodeLookup', {
         'BrowseNodeId': nodeids.join(",")
@@ -89,12 +89,12 @@ class ApacBridge
         Nodes.push(node)
       return cb(null,Nodes)
 
-  itemLookup : (locale,itemIds,cb)=>
-    logger.trace("itemLookup(#{locale},#{itemIds},cb)")
+  itemLookup : (locale,itemIds,responseGroup,cb)=>
+    logger.trace("itemLookup(#{locale},#{itemIds},[#{responseGroup}],cb)")
     accessDate = new Date()
     @newHelperForLocale(locale).execute 'ItemLookup', {
         'ItemId': itemIds.join(",")
-        'ResponseGroup': 'Small,Images'
+        'ResponseGroup': responseGroup.join(",")
     }, (err, rawResult)=>
       if (err)
         return cb(err)
@@ -133,7 +133,7 @@ class ApacBridge
       return cb(null,Items)
       
   nodeLookupFull : (locale,nodeids,cb)=>
-    logger.trace("nodeLookupFull(#{locale},#{nodeids},cb)")
+    logger.trace("nodeLookupFull(#{locale},[#{nodeids}],cb)")
     @nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)=>
       if(err)
         return cb(err)
@@ -145,7 +145,7 @@ class ApacBridge
           for id in ids
             itemIdMap[id] = {}
       itemIds = Object.keys(itemIdMap)
-      @itemLookup locale,itemIds,(err,items)=>
+      @itemLookup locale,itemIds,['Small','Images'],(err,items)=>
         if(err)
           return cb(err)
         itemMap = {}
@@ -169,7 +169,7 @@ class ApacBridgeWithSlicing extends ApacBridge
     if(nodeids.length <= @MAX_NODE_LOOKUP)
       # Do nothing if ids can processed in single query
       return super(locale,nodeids,responseGroup,cb)
-    logger.trace "Slicing nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
+    logger.trace "Slicing nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
     ops = []
     for ids in @sliceBySize(nodeids,@MAX_NODE_LOOKUP)
       ops.push(@opNodeLookupWithoutCache(locale,ids,responseGroup,cb))
@@ -182,14 +182,14 @@ class ApacBridgeWithSlicing extends ApacBridge
           resultAll.push(node)
       return cb(null,resultAll)
 
-  itemLookup : (locale,itemIds,cb)=>
+  itemLookup : (locale,itemIds,responseGroup,cb)=>
     if(itemIds.length <= @MAX_ITEM_LOOKUP)
       # Do nothing if ids can processed in single query
-      return super(locale,itemIds,cb)
-    logger.trace("Slicing itemLookup(#{locale},#{itemIds},cb)")
+      return super(locale,itemIds,responseGroup,cb)
+    logger.trace("Slicing itemLookup(#{locale},#{itemIds},[#{responseGroup}],cb)")
     ops = []
     for ids in @sliceBySize(itemIds,@MAX_ITEM_LOOKUP)
-      ops.push(@opItemLookupWithoutCache(locale,ids,cb))
+      ops.push(@opItemLookupWithoutCache(locale,ids,responseGroup,cb))
     async.parallel ops,(err,results)=>
       if(err)
         return cb(err)
@@ -211,9 +211,9 @@ class ApacBridgeWithSlicing extends ApacBridge
     return (cb) => 
       @nodeLookup(locale,nodeids,responseGroup,cb,true)
 
-  opItemLookupWithoutCache : (locale,ids,cb)=>
+  opItemLookupWithoutCache : (locale,ids,responseGroup,cb)=>
     return (cb) => 
-      @itemLookup(locale,ids,cb,true)
+      @itemLookup(locale,ids,responseGroup,cb,true)
 
 class CachedApacBridge extends ApacBridgeWithSlicing
   nodeCache : null
@@ -226,14 +226,15 @@ class CachedApacBridge extends ApacBridgeWithSlicing
   nodeLookup : (locale,nodeids,responseGroup,cb,noCache)=>
     if(noCache)
       return super(locale,nodeids,responseGroup,cb)
-    logger.trace "Cached nodeLookup(#{locale},#{nodeids},#{responseGroup},cb)"
+    logger.trace "Cached nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
     nodeIdsToFetch = []
     resultAll = []
     for nodeId in nodeids
-      cache = @cache[@nodeCacheKey(locale,nodeId,responseGroup)]
+      cacheKey = @nodeCacheKey(locale,nodeId,responseGroup)
+      cache = @cache[cacheKey]
       if(cache)
         if(new Date().getTime() - cache.Timestamp.getTime() < 1000 * 60 * 10) # 10 min
-          logger.trace "node cache hit #{nodeId}"
+          logger.trace "node cache hit #{cacheKey}"
           resultAll.push(cache)
           continue
       nodeIdsToFetch.push(nodeId)
@@ -243,41 +244,44 @@ class CachedApacBridge extends ApacBridgeWithSlicing
       if(err)
         return cb(err)
       for node in nodes
-        logger.trace "node cache save #{node.NodeId}"
-        @cache[@nodeCacheKey(locale,node.NodeId,responseGroup)] = node
+        cacheKey = @nodeCacheKey(locale,node.NodeId,responseGroup)
+        logger.trace "node cache save #{cacheKey}"
+        @cache[cacheKey] = node
         resultAll.push(node)
       return cb(null,resultAll)
   
   nodeCacheKey : (locale,nodeid,responseGroup)=>
-    return "node-#{locale}-#{nodeid}-#{responseGroup}"
+    return "node-#{locale}-#{nodeid}-[#{responseGroup}]"
       
-  itemLookup : (locale,itemIds,cb,noCache)=>
+  itemLookup : (locale,itemIds,responseGroup,cb,noCache)=>
     if(noCache)
-      return super(locale,itemIds,cb)
-    logger.trace("Cached itemLookup(#{locale},#{itemIds},cb)")
+      return super(locale,itemIds,responseGroup,cb)
+    logger.trace("Cached itemLookup(#{locale},#{itemIds},[#{responseGroup}],cb)")
     itemIdsToFetch = []
     resultAll = []
     for itemId in itemIds
-      cache = @cache[@itemCacheKey(locale,itemId)]
+      cacheKey = @itemCacheKey(locale,itemId,responseGroup)
+      cache = @cache[cacheKey]
       if(cache)
         if(new Date().getTime() - cache.Timestamp.getTime() < 1000 * 60 * 10) # 10 min
-          logger.trace "item cache hit #{itemId}"
+          logger.trace "item cache hit #{cacheKey}"
           resultAll.push(cache)
           continue
       itemIdsToFetch.push(itemId)
     if(itemIdsToFetch.length == 0)
       return cb(null,resultAll)
-    super locale,itemIdsToFetch,(err,items)=>
+    super locale,itemIdsToFetch,responseGroup,(err,items)=>
       if(err)
         return cb(err)
       for item in items
-        logger.trace "item cache save #{item.ItemId}"
-        @cache[@itemCacheKey(locale,item.ItemId)] = item
+        cacheKey = @itemCacheKey(locale,item.ItemId,responseGroup)
+        logger.trace "item cache save #{cacheKey}"
+        @cache[cacheKey] = item
         resultAll.push(item)
       return cb(null,resultAll)
       
-  itemCacheKey : (locale,itemId)=>
-    return "item-#{locale}-#{itemId}"
+  itemCacheKey : (locale,itemId,responseGroup)=>
+    return "item-#{locale}-#{itemId}-[#{responseGroup}]"
 
     
 module.exports = (config)->
