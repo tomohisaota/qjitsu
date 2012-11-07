@@ -145,7 +145,6 @@ class ApacBridge
           for id in ids
             itemIdMap[id] = {}
       itemIds = Object.keys(itemIdMap)
-
       @itemLookup locale,itemIds,(err,items)=>
         if(err)
           return cb(err)
@@ -222,8 +221,7 @@ class CachedApacBridge extends ApacBridgeWithSlicing
   
   constructor: (config)->
     super(config)
-    @nodeCache = {}
-    @itemCache = {}
+    @cache = {}
     
   nodeLookup : (locale,nodeids,responseGroup,cb,noCache)=>
     if(noCache)
@@ -232,10 +230,11 @@ class CachedApacBridge extends ApacBridgeWithSlicing
     nodeIdsToFetch = []
     resultAll = []
     for nodeId in nodeids
-      if(@nodeCache[nodeId])
-        if(new Date().getTime() - @nodeCache[nodeId].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
+      cache = @cache[@nodeCacheKey(locale,nodeId,responseGroup)]
+      if(cache)
+        if(new Date().getTime() - cache.Timestamp.getTime() < 1000 * 60 * 10) # 10 min
           logger.trace "node cache hit #{nodeId}"
-          resultAll.push(@nodeCache[nodeId])
+          resultAll.push(cache)
           continue
       nodeIdsToFetch.push(nodeId)
     if(nodeIdsToFetch.length == 0)
@@ -245,9 +244,12 @@ class CachedApacBridge extends ApacBridgeWithSlicing
         return cb(err)
       for node in nodes
         logger.trace "node cache save #{node.NodeId}"
-        @nodeCache[node.NodeId] = node
+        @cache[@nodeCacheKey(locale,node.NodeId,responseGroup)] = node
         resultAll.push(node)
       return cb(null,resultAll)
+  
+  nodeCacheKey : (locale,nodeid,responseGroup)=>
+    return "node-#{locale}-#{nodeid}-#{responseGroup}"
       
   itemLookup : (locale,itemIds,cb,noCache)=>
     if(noCache)
@@ -256,10 +258,11 @@ class CachedApacBridge extends ApacBridgeWithSlicing
     itemIdsToFetch = []
     resultAll = []
     for itemId in itemIds
-      if(@itemCache[itemId])
-        if(new Date().getTime() - @itemCache[itemId].Timestamp.getTime() < 1000 * 60 * 10) # 10 min
+      cache = @cache[@itemCacheKey(locale,itemId)]
+      if(cache)
+        if(new Date().getTime() - cache.Timestamp.getTime() < 1000 * 60 * 10) # 10 min
           logger.trace "item cache hit #{itemId}"
-          resultAll.push(@itemCache[itemId])
+          resultAll.push(cache)
           continue
       itemIdsToFetch.push(itemId)
     if(itemIdsToFetch.length == 0)
@@ -269,9 +272,13 @@ class CachedApacBridge extends ApacBridgeWithSlicing
         return cb(err)
       for item in items
         logger.trace "item cache save #{item.ItemId}"
-        @itemCache[item.ItemId] = item
+        @cache[@itemCacheKey(locale,item.ItemId)] = item
         resultAll.push(item)
       return cb(null,resultAll)
+      
+  itemCacheKey : (locale,itemId)=>
+    return "item-#{locale}-#{itemId}"
+
     
 module.exports = (config)->
   return new CachedApacBridge(config)
