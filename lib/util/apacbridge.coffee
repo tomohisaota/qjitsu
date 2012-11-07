@@ -216,12 +216,14 @@ class ApacBridgeWithSlicing extends ApacBridge
       @itemLookup(locale,ids,responseGroup,cb,true)
 
 class CachedApacBridge extends ApacBridgeWithSlicing
-  nodeCache : null
-  itemCache : null
+  cacher : null
+  NODE_TTL : 1000 * 60 * 60 * 3
+  ITEM_TTL : 1000 * 60 * 60
   
-  constructor: (config)->
+  constructor: (config,cacher)->
     super(config)
-    @cache = {}
+    @superRef = CachedApacBridge.__super__
+    @cacher = cacher
     
   nodeLookup : (locale,nodeids,responseGroup,cb,noCache)=>
     if(noCache)
@@ -229,26 +231,30 @@ class CachedApacBridge extends ApacBridgeWithSlicing
     logger.trace "Cached nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
     nodeIdsToFetch = []
     resultAll = []
+    cacheKeyList = []
     for nodeId in nodeids
-      cacheKey = @nodeCacheKey(locale,nodeId,responseGroup)
-      cache = @cache[cacheKey]
-      if(cache)
-        if(new Date().getTime() - cache.Timestamp.getTime() < 1000 * 60 * 10) # 10 min
-          logger.trace "node cache hit #{cacheKey}"
+      cacheKeyList.push(@nodeCacheKey(locale,nodeId,responseGroup))
+    @cacher.mget cacheKeyList,(err,cachedValueMap)=>
+      for nodeId in nodeids
+        cacheKey = @nodeCacheKey(locale,nodeId,responseGroup)
+        cache = cachedValueMap[cacheKey]
+        if(cache)
           resultAll.push(cache)
           continue
-      nodeIdsToFetch.push(nodeId)
-    if(nodeIdsToFetch.length == 0)
-      return cb(null,resultAll)
-    super locale,nodeIdsToFetch,responseGroup,(err,nodes)=>
-      if(err)
-        return cb(err)
-      for node in nodes
-        cacheKey = @nodeCacheKey(locale,node.NodeId,responseGroup)
-        logger.trace "node cache save #{cacheKey}"
-        @cache[cacheKey] = node
-        resultAll.push(node)
-      return cb(null,resultAll)
+        nodeIdsToFetch.push(nodeId)
+      if(nodeIdsToFetch.length == 0)
+        return cb(null,resultAll)
+      @superRef.nodeLookup.apply this,[locale,nodeIdsToFetch,responseGroup,(err,nodes)=>
+        if(err)
+          return cb(err)
+        valueToBeCached = {}
+        for node in nodes
+          cacheKey = @nodeCacheKey(locale,node.NodeId,responseGroup)
+          valueToBeCached[cacheKey] = node
+          resultAll.push(node)
+        @cacher.mset valueToBeCached,@NODE_TTL,(err)=>
+          return cb(null,resultAll)
+      ]
   
   nodeCacheKey : (locale,nodeid,responseGroup)=>
     return "node-#{locale}-#{nodeid}-[#{responseGroup}]"
@@ -259,30 +265,36 @@ class CachedApacBridge extends ApacBridgeWithSlicing
     logger.trace("Cached itemLookup(#{locale},#{itemIds},[#{responseGroup}],cb)")
     itemIdsToFetch = []
     resultAll = []
+    cacheKeyList = []
     for itemId in itemIds
-      cacheKey = @itemCacheKey(locale,itemId,responseGroup)
-      cache = @cache[cacheKey]
-      if(cache)
-        if(new Date().getTime() - cache.Timestamp.getTime() < 1000 * 60 * 10) # 10 min
-          logger.trace "item cache hit #{cacheKey}"
-          resultAll.push(cache)
-          continue
-      itemIdsToFetch.push(itemId)
-    if(itemIdsToFetch.length == 0)
-      return cb(null,resultAll)
-    super locale,itemIdsToFetch,responseGroup,(err,items)=>
+      cacheKeyList.push(@itemCacheKey(locale,itemId,responseGroup))
+    @cacher.mget cacheKeyList,(err,cachedValueMap)=>
       if(err)
         return cb(err)
-      for item in items
-        cacheKey = @itemCacheKey(locale,item.ItemId,responseGroup)
-        logger.trace "item cache save #{cacheKey}"
-        @cache[cacheKey] = item
-        resultAll.push(item)
-      return cb(null,resultAll)
+      for itemId in itemIds
+        cacheKey = @itemCacheKey(locale,itemId,responseGroup)
+        cache = cachedValueMap[cacheKey]
+        if(cache)
+          resultAll.push(cache)
+          continue
+        itemIdsToFetch.push(itemId)
+      if(itemIdsToFetch.length == 0)
+        return cb(null,resultAll)
+      @superRef.itemLookup.apply this,[locale,itemIdsToFetch,responseGroup,(err,items)=>
+        if(err)
+          return cb(err)
+        valueToBeCached = {}
+        for item in items
+          cacheKey = @itemCacheKey(locale,item.ItemId,responseGroup)
+          valueToBeCached[cacheKey] = item
+          resultAll.push(item)
+        @cacher.mset valueToBeCached,@ITEM_TTL,(err)=>
+          return cb(null,resultAll)
+      ]
       
   itemCacheKey : (locale,itemId,responseGroup)=>
     return "item-#{locale}-#{itemId}-[#{responseGroup}]"
 
     
 module.exports = (config)->
-  return new CachedApacBridge(config)
+  return new CachedApacBridge(config,require("./cacher"))
