@@ -36,11 +36,16 @@ class ApacBridge
       if (err)
         return cb(err)
       if(rawResult.BrowseNodeLookupErrorResponse?.Error)
-        code = rawResult.BrowseNodeLookupErrorResponse.Error[0].Code[0]
-        message = rawResult.BrowseNodeLookupErrorResponse.Error[0].Message[0]
-        return cb(new Error(code,message))
-      rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
+        error = rawResult.BrowseNodeLookupErrorResponse.Error[0]
+        return cb(new Error(error.Code[0],error.Message[0]))
+      # if(rawResult.BrowseNodeLookupResponse.BrowseNodes[0].Request[0].Errors)
+      #         error = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].Request[0].Errors[0].Error[0]
+      #         return cb(new Error(error.Code[0],error.Message[0]))
+      #       
       Nodes = []
+      unless(rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode)
+        return cb(null,Nodes)
+      rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
       for nodeRaw in rawResult
         node = {
           Locale : locale
