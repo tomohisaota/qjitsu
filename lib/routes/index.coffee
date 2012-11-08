@@ -150,8 +150,8 @@ exports.loadRoute = (app)->
       if(result[0].Children)
         for node in result[0].Children
           prefetchIds.push(node.NodeId)
-      if(prefetchIds.length > 30)
-        prefetchIds = prefetchIds.slice(0,30)
+      if(prefetchIds.length > 10)
+        prefetchIds = prefetchIds.slice(0,10)
       apachbridge.nodeLookup locale,prefetchIds,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
         #Do nothing
       
