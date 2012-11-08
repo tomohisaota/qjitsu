@@ -34,9 +34,11 @@ class ApacBridge
     }, (err, rawResult)=>
       if (err)
         return cb(err)
-      unless (rawResult.BrowseNodeLookupResponse?)
-        return cb(new Error("Failed to parse response"))
-      #logger.trace JSON.stringify(rawResult,null," ")
+      logger.trace JSON.stringify(rawResult,null," ")
+      if(rawResult.BrowseNodeLookupErrorResponse?.Error)
+        code = rawResult.BrowseNodeLookupErrorResponse.Error.Code
+        message = rawResult.BrowseNodeLookupErrorResponse.Error.Message
+        return cb(new Error(code,message))
       rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
       Nodes = []
       for nodeRaw in rawResult
@@ -98,8 +100,10 @@ class ApacBridge
     }, (err, rawResult)=>
       if (err)
         return cb(err)
-      unless (rawResult.ItemLookupResponse?)
-        return cb(new Error("Failed to parse response"))
+      if(rawResult.ItemLookupErrorResponse?.Error)
+        code = rawResult.ItemLookupErrorResponse.Error.Code
+        message = rawResult.ItemLookupErrorResponse.Error.Message
+        return cb(new Error(code,message))
       Items = []
       #logger.trace JSON.stringify(rawResult,null," ")
       unless(rawResult.ItemLookupResponse.Items[0].Item)
@@ -160,7 +164,7 @@ class ApacBridge
         cb(null,nodeResults)
           
 # Amazon Product Advertising API has limit for number of items in 1 query
-# This class slices id list, and run query in paralle
+# This class slices id list, and run query in series
 class ApacBridgeWithSlicing extends ApacBridge
   MAX_NODE_LOOKUP : 10
   MAX_ITEM_LOOKUP : 10
@@ -172,7 +176,7 @@ class ApacBridgeWithSlicing extends ApacBridge
     ops = []
     for ids in @sliceBySize(nodeids,@MAX_NODE_LOOKUP)
       ops.push(@opNodeLookupWithoutCache(locale,ids,responseGroup,cb))
-    async.parallel ops,(err,results)=>
+    async.series ops,(err,results)=>
       if(err)
         return cb(err)
       resultAll = []
@@ -189,7 +193,7 @@ class ApacBridgeWithSlicing extends ApacBridge
     ops = []
     for ids in @sliceBySize(itemIds,@MAX_ITEM_LOOKUP)
       ops.push(@opItemLookupWithoutCache(locale,ids,responseGroup,cb))
-    async.parallel ops,(err,results)=>
+    async.series ops,(err,results)=>
       if(err)
         return cb(err)
       resultAll = []
