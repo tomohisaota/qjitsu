@@ -97,6 +97,22 @@ exports.loadRoute = (app)->
         2017305051,
         2277725051
         ]
+    if(locale == "CA")
+      return [
+        3561347011,
+        927726,
+        962464,
+        677211011,
+        2206276011,
+        952768,
+        962454,
+        3234171,
+        2242990011,
+        3006903011,
+        962072,
+        110218011,
+        2235621011
+      ]
     ids = []
     for category in apacroot.categories(locale)
       ids.push(apacroot.rootnode(locale,category))
