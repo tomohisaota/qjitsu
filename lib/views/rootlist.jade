@@ -30,7 +30,7 @@
         - for category in locals.rootCategories
           tr
             td 
-              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.NodeId}
+              =category.NodeId
             td 
               a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.Name}
             td 
