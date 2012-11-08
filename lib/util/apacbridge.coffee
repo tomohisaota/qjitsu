@@ -32,12 +32,12 @@ class ApacBridge
         'BrowseNodeId': nodeids.join(",")
         'ResponseGroup': responseGroup.join(",")
     }, (err, rawResult)=>
+      logger.trace JSON.stringify(rawResult,null," ")
       if (err)
         return cb(err)
-      logger.trace JSON.stringify(rawResult,null," ")
       if(rawResult.BrowseNodeLookupErrorResponse?.Error)
-        code = rawResult.BrowseNodeLookupErrorResponse.Error.Code
-        message = rawResult.BrowseNodeLookupErrorResponse.Error.Message
+        code = rawResult.BrowseNodeLookupErrorResponse.Error[0].Code[0]
+        message = rawResult.BrowseNodeLookupErrorResponse.Error[0].Message[0]
         return cb(new Error(code,message))
       rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
       Nodes = []
@@ -101,8 +101,8 @@ class ApacBridge
       if (err)
         return cb(err)
       if(rawResult.ItemLookupErrorResponse?.Error)
-        code = rawResult.ItemLookupErrorResponse.Error.Code
-        message = rawResult.ItemLookupErrorResponse.Error.Message
+        code = rawResult.ItemLookupErrorResponse.Error[0].Code[0]
+        message = rawResult.ItemLookupErrorResponse.Error[0].Message[0]
         return cb(new Error(code,message))
       Items = []
       #logger.trace JSON.stringify(rawResult,null," ")
@@ -135,33 +135,6 @@ class ApacBridge
           }
         Items.push(item)
       return cb(null,Items)
-      
-  nodeLookupFull : (locale,nodeids,cb)=>
-    logger.trace("nodeLookupFull(#{locale},[#{nodeids}],cb)")
-    @nodeLookup locale,nodeids,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)=>
-      if(err)
-        return cb(err)
-      # Create unique set of all item ids to lookup
-      itemIdMap = {}
-      for nodeResult in nodeResults
-        for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
-          continue unless(ids)
-          for id in ids
-            itemIdMap[id] = {}
-      itemIds = Object.keys(itemIdMap)
-      @itemLookup locale,itemIds,['Small','Images'],(err,items)=>
-        if(err)
-          return cb(err)
-        itemMap = {}
-        for item in items
-          itemMap[item.ItemId] = item
-        for nodeResult in nodeResults
-          nodeResult.itemMap = {}
-          for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
-            continue unless(ids)
-            for id in ids
-              nodeResult.itemMap[id] = itemMap[id]
-        cb(null,nodeResults)
           
 # Amazon Product Advertising API has limit for number of items in 1 query
 # This class slices id list, and run query in series
