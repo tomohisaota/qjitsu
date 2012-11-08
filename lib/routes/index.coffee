@@ -41,6 +41,9 @@ exports.loadRoute = (app)->
     for l in apacroot.locales()
       if(l == locale)
         apachbridge.nodeLookup locale,getRootNodes(locale),["BrowseNodeInfo"],(err,nodeResults)=>
+          if(err)
+            res.redirect "/"
+            return
           rootCategories = []
           for node in nodeResults
             if(node.isRoot and node.Ancestors)
