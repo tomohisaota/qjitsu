@@ -68,38 +68,6 @@ exports.loadRoute = (app)->
     res.redirect "/"
     
   getRootNodes = (locale)->
-    if(locale == "JP")
-      return [
-        465610,
-        52231011,
-        2250739051 ,
-        562002,
-        562032,
-        701040,
-        2129039051,
-        2123630051,
-        637872,
-        3210991,
-        2127210051,
-        637630,
-        86732051,
-        3839151,
-        2127213051,
-        57240051,
-        161669011,
-        52391051,
-        344919011,
-        13299551,
-        2277722051,
-        361245011,
-        2016927051,
-        85896051,
-        331952011,
-        14315361,
-        2016930051,
-        2017305051,
-        2277725051
-        ]
     if(locale == "CA")
       return [
         3561347011,
@@ -171,6 +139,69 @@ exports.loadRoute = (app)->
         599383031,
         1571263031
       ]
+    if(locale == "FR")
+      return [
+        1571269031,
+        193711031,
+        672109031,
+        590749031,
+        206618031,
+        215935031,
+        57686031,
+        409392,
+        192420031,
+        908827031,
+        340859031,
+        340862031,
+        322088011,
+        548014,
+        69633011,
+        301130,
+        547972,
+        213081031,
+        60937031,
+        301164,
+        206442031,
+        197859031,
+        13910671,
+        197862031,
+        325615031,
+        340856031
+      ]
+    
+    if(locale == "JP")
+      return [
+        465610,
+        52231011,
+        2250739051 ,
+        562002,
+        562032,
+        701040,
+        2129039051,
+        2123630051,
+        637872,
+        3210991,
+        2127210051,
+        637630,
+        86732051,
+        3839151,
+        2127213051,
+        57240051,
+        161669011,
+        52391051,
+        344919011,
+        13299551,
+        2277722051,
+        361245011,
+        2016927051,
+        85896051,
+        331952011,
+        14315361,
+        2016930051,
+        2017305051,
+        2277725051
+        ]
+
     ids = []
     for category in apacroot.categories(locale)
       ids.push(apacroot.rootnode(locale,category))
@@ -182,6 +213,10 @@ exports.loadRoute = (app)->
     apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
       if (err)
         console.log('Error: ' + err + "\n")
+        res.redirect "/#{locale}"
+        return
+      if (result.length == 0)
+        console.log("Not found")
         res.redirect "/#{locale}"
         return
       #logger.trace JSON.stringify(result[0],null," ")
@@ -209,4 +244,9 @@ exports.loadRoute = (app)->
         prefetchIds = prefetchIds.slice(0,10)
       apachbridge.nodeLookup locale,prefetchIds,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
         #Do nothing
+        
+  app.use (err, req, res, next)->
+    log.error err
+    res.status(500)
+    res.render('error/500')
       
