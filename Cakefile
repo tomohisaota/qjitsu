@@ -23,9 +23,14 @@ task 'stop', 'Stop the app', ->
 task 'log', 'Tail forever log', ->
   run 'tail', ['-n','200','-f',"#{__dirname}/log/forever.log"]
 
-task 'test', 'Run mocha tests', ->
-  run 'node', ['node_modules/mocha/bin/mocha',
+option "-g","--grep [exp]","Regex for unit test"
+
+task 'test', 'Run mocha tests', (options)->
+  args = ['node_modules/mocha/bin/mocha',
                '--colors',
                '--require', 'should',
                '--reporter', 'spec',
                '--compilers', 'coffee:coffee-script']
+  if(options["grep"])
+    args.push("--grep",options["grep"])
+  run 'node', args

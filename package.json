@@ -1,6 +1,6 @@
 {
   "name": "qjitsu",
-  "version": "0.0.1-40",
+  "version": "0.0.1-41",
   "private": true,
   "dependencies": {
     "async": "*",
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "mocha": "*",
+    "chai": "*",
     "should": "*"
   },
   "scripts": {
