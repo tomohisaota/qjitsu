@@ -4,13 +4,12 @@ async = require("async")
 
 apacroot = require("apacroot")
 apachbridge = new require("../util/apacbridge")()
+wrapper = require("../util/apacwrapper")
 
 exports.loadRoute = (app)->
   app.get '/', (req, res) ->
     locales = []
     for locale in apacroot.locales()
-      # some of the locales does not work.
-      # hide from list for now
       locales.push({
         locale   : locale
         endpoint : apacroot.endpoint(locale)
@@ -25,42 +24,44 @@ exports.loadRoute = (app)->
     res.contentType('application/json; charset=utf-8')
     locale = req.params.locale
     nodeid = req.params.nodeid
-    apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeResults)=>
+    apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,nodeRawArray)=>
+      if(err)
+        res.redirect "/"
+        return
+      nodes = wrapper.wrapNode(nodeRawArray)
       itemIdMap = {}
-      for nodeResult in nodeResults
-        for ids in [nodeResult.MostGifted,nodeResult.NewReleases,nodeResult.MostWishedFor,nodeResult.TopSellers]
-          continue unless(ids)
-          for id in ids
-            itemIdMap[id] = {}
+      for node in nodes
+        for items in [node.MostGifted,node.NewReleases,node.MostWishedFor,node.TopSellers]
+          continue unless(items)
+          for item in items
+            itemIdMap[item.ASIN] = {}
       itemIds = Object.keys(itemIdMap)
-      apachbridge.itemLookup locale,itemIds,['Small','Images'],(err,items)=>
-        res.send(JSON.stringify(items,null," "))
+      apachbridge.itemLookup locale,itemIds,['Small','Images'],(err,itemRawArray)=>
+        if(err)
+          res.redirect "/"
+          return
+        itemsResponse = []
+        for item in wrapper.wrapItem(itemRawArray)
+          itemsResponse.push({
+            ASIN : item.ASIN
+            Title : item.Title
+            DetailPageURL : item.DetailPageURL
+            MediumImage : item.MediumImage
+          })
+        res.send(JSON.stringify(itemsResponse,null," "))
 
   app.get '/:locale', (req, res) ->
     locale = req.params.locale
     for l in apacroot.locales()
       if(l == locale)
-        apachbridge.nodeLookup locale,getRootNodes(locale),["BrowseNodeInfo"],(err,nodeResults)=>
+        apachbridge.nodeLookup locale,getRootNodes(locale),["BrowseNodeInfo"],(err,nodeRawArray)=>
           if(err)
             res.redirect "/"
             return
-          rootCategories = []
-          for node in nodeResults
-            if(node.isRoot and node.Ancestors)
-              rootCategories.push {
-                Name : node.Ancestors[node.Ancestors.length - 1].Name
-                NodeId : node.NodeId
-                isRoot : true
-              }
-            else
-              rootCategories.push {
-                Name : node.Name
-                NodeId : node.NodeId
-                isRoot : false
-              }
+          nodes = wrapper.wrapNode(nodeRawArray)
           res.render 'rootlist',{
             locale         : locale
-            rootCategories : rootCategories
+            rootCategories : nodes
             title          : "QJITSU /#{locale}"
           }
           return
@@ -230,7 +231,7 @@ exports.loadRoute = (app)->
   app.get "/:locale/:nodeid", (req, res) ->  
     locale = req.params.locale
     nodeid = req.params.nodeid
-    apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
+    apachbridge.nodeLookup locale,[nodeid],["BrowseNodeInfo"],(err,result)->
       if (err)
         console.log('Error: ' + err + "\n")
         res.redirect "/#{locale}"
@@ -239,14 +240,16 @@ exports.loadRoute = (app)->
         console.log("Not found")
         res.redirect "/#{locale}"
         return
+      node = new wrapper.Node(result[0])
       #logger.trace JSON.stringify(result[0],null," ")
       title = "/#{locale}"
-      if(result[0].Ancestors)
-        for Ancestor in result[0].Ancestors
-          title = "#{title}/#{Ancestor.Name}"
-      title = "#{title}/#{result[0].Name}"
+      fromTop = node.AncestorsFromTop
+      for Ancestor in fromTop[0]
+        title = "#{title}/#{Ancestor.Name}"
+      title = "#{title}/#{node.Name}"
       res.render 'index',{
-        data:result[0]
+        locale : locale
+        data:node
         title          : "QJITSU #{title}"
       }
       
@@ -262,11 +265,11 @@ exports.loadRoute = (app)->
           prefetchIds.push(node.NodeId)
       if(prefetchIds.length > 10)
         prefetchIds = prefetchIds.slice(0,10)
-      apachbridge.nodeLookup locale,prefetchIds,["BrowseNodeInfo","MostGifted","NewReleases","MostWishedFor","TopSellers"],(err,result)->
+      apachbridge.nodeLookup locale,prefetchIds,["BrowseNodeInfo"],(err,result)->
         #Do nothing
         
   app.use (err, req, res, next)->
-    log.error err
+    console.log err
     res.status(500)
     res.render('error/500')
       

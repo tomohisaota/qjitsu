@@ -3,6 +3,7 @@ logger = require("log4js").getLogger("util.apacbridge")
 apac = require('apac')
 apacroot = require("apacroot")
 async = require("async")
+wrapper = require("./apacwrapper")
 
 class ApacBridge
   config : null
@@ -27,119 +28,55 @@ class ApacBridge
 
   nodeLookup : (locale,nodeids,responseGroup,cb)=>
     logger.trace "nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
-    accessDate = new Date()
+    if(nodeids.length == 0)
+      return cb(null,[])
     @newHelperForLocale(locale).execute 'BrowseNodeLookup', {
         'BrowseNodeId': nodeids.join(",")
         'ResponseGroup': responseGroup.join(",")
     }, (err, rawResult)=>
-      logger.trace JSON.stringify(rawResult,null," ")
       if (err)
         return cb(err)
-      if(rawResult.BrowseNodeLookupErrorResponse?.Error)
-        error = rawResult.BrowseNodeLookupErrorResponse.Error[0]
-        return cb(new Error(error.Code[0],error.Message[0]))
-      # if(rawResult.BrowseNodeLookupResponse.BrowseNodes[0].Request[0].Errors)
-      #         error = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].Request[0].Errors[0].Error[0]
-      #         return cb(new Error(error.Code[0],error.Message[0]))
-      #       
-      Nodes = []
-      unless(rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode)
-        return cb(null,Nodes)
-      rawResult = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
-      for nodeRaw in rawResult
-        node = {
-          Locale : locale
-          NodeId : nodeRaw.BrowseNodeId[0]
-          Name : nodeRaw.Name[0]
-          Timestamp : accessDate
-        }
-        if(nodeRaw.IsCategoryRoot)
-          node.isRoot = nodeRaw.IsCategoryRoot[0] == "1"
-        if(nodeRaw.Children)
-          node.Children = []
-          for child in nodeRaw.Children[0].BrowseNode
-            node.Children.push {
-              NodeId : child.BrowseNodeId[0]
-              Name : child.Name[0]
-            }
-        if(nodeRaw.Ancestors)
-          Ancestor = nodeRaw.Ancestors[0].BrowseNode[0]
-          node.Ancestors = []
-          while(true)
-            temp = {}
-            temp.NodeId = Ancestor.BrowseNodeId[0]
-            if(Ancestor.Name)
-              temp.Name =Ancestor.Name[0]
-            else
-              temp.Name =Ancestor.BrowseNodeId[0]
-            node.Ancestors.unshift temp
-            break unless(Ancestor.Ancestors)
-            Ancestor = Ancestor.Ancestors[0].BrowseNode[0]
-        if(nodeRaw.TopItemSet)
-          for itemSetRaw in nodeRaw.TopItemSet
-            if(itemSetRaw.Type[0] == "MostGifted")
-              node.MostGifted = []
-              for item in itemSetRaw.TopItem
-                node.MostGifted.push item.ASIN[0]
-            if(itemSetRaw.Type[0] == "NewReleases")
-              node.NewReleases = []
-              for item in itemSetRaw.TopItem
-                node.NewReleases.push item.ASIN[0]
-            if(itemSetRaw.Type[0] == "MostWishedFor")
-              node.MostWishedFor = []
-              for item in itemSetRaw.TopItem
-                node.MostWishedFor.push item.ASIN[0]
-            if(itemSetRaw.Type[0] == "TopSellers")
-              node.TopSellers = []
-              for item in itemSetRaw.TopItem
-                node.TopSellers.push item.ASIN[0]
-        Nodes.push(node)
-      return cb(null,Nodes)
+      nodeRawMap = {}
+      if(rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode)
+        for nodeRaw in rawResult.BrowseNodeLookupResponse.BrowseNodes[0].BrowseNode
+          nodeId = parseInt(nodeRaw.BrowseNodeId[0])
+          nodeRawMap[nodeId] = nodeRaw
+      if(rawResult.BrowseNodeLookupResponse.BrowseNodes[0].Request[0].Errors)
+        for nodeId in nodeids
+          continue if(nodeRawMap[nodeId])
+          nodeRawMap[nodeId] = rawResult.BrowseNodeLookupResponse.BrowseNodes[0].Request[0].Errors[0]
+          #Save BrowseNodeId for convinience
+          nodeRawMap[nodeId].BrowseNodeId = [nodeId]
+      nodeRawArray = []
+      for nodeId in nodeids
+        nodeRawArray.push(nodeRawMap[nodeId])
+      return cb(null,nodeRawArray)
 
   itemLookup : (locale,itemIds,responseGroup,cb)=>
     logger.trace("itemLookup(#{locale},#{itemIds},[#{responseGroup}],cb)")
-    accessDate = new Date()
+    if(itemIds.length == 0)
+      return cb(null,[])
     @newHelperForLocale(locale).execute 'ItemLookup', {
         'ItemId': itemIds.join(",")
         'ResponseGroup': responseGroup.join(",")
     }, (err, rawResult)=>
       if (err)
         return cb(err)
-      if(rawResult.ItemLookupErrorResponse?.Error)
-        code = rawResult.ItemLookupErrorResponse.Error[0].Code[0]
-        message = rawResult.ItemLookupErrorResponse.Error[0].Message[0]
-        return cb(new Error(code,message))
-      Items = []
-      #logger.trace JSON.stringify(rawResult,null," ")
-      unless(rawResult.ItemLookupResponse.Items[0].Item)
-        return cb(null,Items)
-      itemsRaw = rawResult.ItemLookupResponse.Items[0].Item
-      for itemRaw in itemsRaw
-        item = {
-          Locale : locale
-          ItemId : itemRaw.ASIN[0]
-          DetailPageURL : itemRaw.DetailPageURL[0]
-          Timestamp : accessDate
-        }
-        if(itemRaw.ItemAttributes)
-          if(itemRaw.ItemAttributes[0].Author)
-            item.Author = itemRaw.ItemAttributes[0].Author[0]
-          if(itemRaw.ItemAttributes[0].Manufacturer)
-            item.Manufacturer = itemRaw.ItemAttributes[0].Manufacturer[0]
-          if(itemRaw.ItemAttributes[0].ProductGroup)
-            item.ProductGroup = itemRaw.ItemAttributes[0].ProductGroup[0]
-          if(itemRaw.ItemAttributes[0].Title)
-            item.Title = itemRaw.ItemAttributes[0].Title[0]
-      
-        if(itemRaw.MediumImage)
-          item.Images = {}
-          item.Images.Medium = {
-            URL : itemRaw.MediumImage[0].URL[0]
-            Width : parseInt(itemRaw.MediumImage[0].Width[0]["_"])
-            Height : parseInt(itemRaw.MediumImage[0].Height[0]["_"])
-          }
-        Items.push(item)
-      return cb(null,Items)
+      itemRawMap = {}
+      if(rawResult.ItemLookupResponse.Items[0].Item)
+        for itemRaw in rawResult.ItemLookupResponse.Items[0].Item
+          itemId = itemRaw.ASIN[0]
+          itemRawMap[itemId] = itemRaw
+      if(rawResult.ItemLookupResponse.Items[0].Request[0].Errors)
+        for itemId in itemIds
+          continue if(itemRawMap[itemId])
+          itemRawMap[itemId] = rawResult.ItemLookupResponse.Items[0].Request[0].Errors[0]
+          #Save ItemId for convinience
+          itemRawMap[itemId].ASIN = [itemId]
+      itemRawArray = []
+      for itemId in itemIds
+        itemRawArray.push(itemRawMap[itemId])
+      return cb(null,itemRawArray)
           
 # Amazon Product Advertising API has limit for number of items in 1 query
 # This class slices id list, and run query in series
@@ -157,11 +94,11 @@ class ApacBridgeWithSlicing extends ApacBridge
     async.series ops,(err,results)=>
       if(err)
         return cb(err)
-      resultAll = []
-      for result in results
-        for node in result
-          resultAll.push(node)
-      return cb(null,resultAll)
+      nodeRawArray = []
+      for nodeRawArrayPartial in results
+        for node in nodeRawArrayPartial
+          nodeRawArray.push(node)
+      return cb(null,nodeRawArray)
 
   itemLookup : (locale,itemIds,responseGroup,cb)=>
     if(itemIds.length <= @MAX_ITEM_LOOKUP)
@@ -174,11 +111,11 @@ class ApacBridgeWithSlicing extends ApacBridge
     async.series ops,(err,results)=>
       if(err)
         return cb(err)
-      resultAll = []
-      for result in results
-        for item in result
-          resultAll.push(item)
-      return cb(null,resultAll)
+      itemArrayRaw = []
+      for itemArrayRawPartial in results
+        for itemRaw in itemArrayRawPartial
+          itemArrayRaw.push(itemRaw)
+      return cb(null,itemArrayRaw)
 
   sliceBySize : (items,maxItemPerSlice)=>
     result = []
@@ -211,30 +148,38 @@ class CachedApacBridge extends ApacBridgeWithSlicing
       return super(locale,nodeids,responseGroup,cb)
     logger.trace "Cached nodeLookup(#{locale},[#{nodeids}],[#{responseGroup}],cb)"
     nodeIdsToFetch = []
-    resultAll = []
+    cachedRawNodeMap = {}
     cacheKeyList = []
     for nodeId in nodeids
       cacheKeyList.push(@nodeCacheKey(locale,nodeId,responseGroup))
     @cacher.mget cacheKeyList,(err,cachedValueMap)=>
+      if(err)
+        return cb(err)
       for nodeId in nodeids
         cacheKey = @nodeCacheKey(locale,nodeId,responseGroup)
         cache = cachedValueMap[cacheKey]
         if(cache)
-          resultAll.push(cache)
+          cachedRawNodeMap[nodeId] = cache
           continue
         nodeIdsToFetch.push(nodeId)
-      if(nodeIdsToFetch.length == 0)
-        return cb(null,resultAll)
       @superRef.nodeLookup.apply this,[locale,nodeIdsToFetch,responseGroup,(err,nodes)=>
         if(err)
           return cb(err)
+        fetchedRawNodeMap = {}
         valueToBeCached = {}
-        for node in nodes
-          cacheKey = @nodeCacheKey(locale,node.NodeId,responseGroup)
-          valueToBeCached[cacheKey] = node
-          resultAll.push(node)
+        if(nodeIdsToFetch.length != 0)
+          for i in [0 .. nodeIdsToFetch.length-1]
+            cacheKey = @nodeCacheKey(locale,nodeIdsToFetch[i],responseGroup)
+            fetchedRawNodeMap[nodeIdsToFetch[i]] = nodes[i]
+            valueToBeCached[cacheKey] = nodes[i]
         @cacher.mset valueToBeCached,@NODE_TTL,(err)=>
-          return cb(null,resultAll)
+          nodeRawArray = []
+          for nodeId in nodeids
+            if(cachedRawNodeMap[nodeId])
+              nodeRawArray.push(cachedRawNodeMap[nodeId])
+            else
+              nodeRawArray.push(fetchedRawNodeMap[nodeId])
+          return cb(null,nodeRawArray)
       ]
   
   nodeCacheKey : (locale,nodeid,responseGroup)=>
@@ -245,7 +190,7 @@ class CachedApacBridge extends ApacBridgeWithSlicing
       return super(locale,itemIds,responseGroup,cb)
     logger.trace("Cached itemLookup(#{locale},#{itemIds},[#{responseGroup}],cb)")
     itemIdsToFetch = []
-    resultAll = []
+    cachedRawItemMap = {}
     cacheKeyList = []
     for itemId in itemIds
       cacheKeyList.push(@itemCacheKey(locale,itemId,responseGroup))
@@ -256,26 +201,31 @@ class CachedApacBridge extends ApacBridgeWithSlicing
         cacheKey = @itemCacheKey(locale,itemId,responseGroup)
         cache = cachedValueMap[cacheKey]
         if(cache)
-          resultAll.push(cache)
+          cachedRawItemMap[itemId] = cache
           continue
         itemIdsToFetch.push(itemId)
-      if(itemIdsToFetch.length == 0)
-        return cb(null,resultAll)
       @superRef.itemLookup.apply this,[locale,itemIdsToFetch,responseGroup,(err,items)=>
         if(err)
           return cb(err)
+        fetchedRawItemMap = {}
         valueToBeCached = {}
-        for item in items
-          cacheKey = @itemCacheKey(locale,item.ItemId,responseGroup)
-          valueToBeCached[cacheKey] = item
-          resultAll.push(item)
+        if(itemIdsToFetch.length != 0)
+          for i in [0 .. itemIdsToFetch.length-1]
+            cacheKey = @itemCacheKey(locale,itemIdsToFetch[i],responseGroup)
+            fetchedRawItemMap[itemIdsToFetch[i]] = items[i]
+            valueToBeCached[cacheKey] = items[i]
         @cacher.mset valueToBeCached,@ITEM_TTL,(err)=>
-          return cb(null,resultAll)
+          itemRawArray = []
+          for itemId in itemIds
+            if(cachedRawItemMap[itemId])
+              itemRawArray.push(cachedRawItemMap[itemId])
+            else
+              itemRawArray.push(fetchedRawItemMap[itemId])
+          return cb(null,itemRawArray)
       ]
       
   itemCacheKey : (locale,itemId,responseGroup)=>
     return "item-#{locale}-#{itemId}-[#{responseGroup}]"
 
-    
 module.exports = (config)->
   return new CachedApacBridge(config,require("./cacher"))

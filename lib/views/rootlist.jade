@@ -14,7 +14,7 @@
           li
             - if(i != 0)
               span(class="divider") |
-            a(href="/#{locale}/#{rootCategory.NodeId}") #{rootCategory.Name}
+            a(href="/#{locale}/#{rootCategory.BrowseNodeId}") #{rootCategory.SmartName}
             
   .row
     .span12
@@ -24,15 +24,28 @@
     .span12
       table(class="table table-bordered table-hover table-condensed")
         tr
-          th Browse Node ID
-          th Name
+          th BrowseNode
           th isRoot
+          th Ancestor Name
+          th Name
         - for category in locals.rootCategories
-          tr
+          - var result = category.isError ? "error" : (category.IsCategoryRoot ? "" : "warning")
+          tr(class="#{result}")
             td 
-              =category.NodeId
-            td 
-              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.Name}
-            td 
-              a(href="/#{locals.locale}/#{category.NodeId}", class="widelink") #{category.isRoot}
+              =category.BrowseNodeId
+            -if(category.isError)
+              td(colspan=3)
+                =category.Error.Message[0]
+            -else
+              td 
+                a(href="/#{locals.locale}/#{category.BrowseNodeId}", class="widelink") #{category.IsCategoryRoot}
+              -if(category.Ancestors.length != 0)
+                td 
+                  a(href="/#{locals.locale}/#{category.BrowseNodeId}", class="widelink") #{category.Ancestors[0].Name}
+              -else
+                td 
+              td 
+                a(href="/#{locals.locale}/#{category.BrowseNodeId}", class="widelink") #{category.Name}
+                  
+              
 

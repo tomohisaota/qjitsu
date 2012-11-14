@@ -1,28 +1,30 @@
 .container
   .row
     .span12
-      ul(class="breadcrumb")
-        li
-          a(href="/")
-            span(class="divider") /
-        li
-          a(href="/#{locals.data.Locale}") #{locals.data.Locale}
-        - if(locals.data.Ancestors)
-          - for Ancestor in locals.data.Ancestors
+      -for ancestors in locals.data.AncestorsFromTop
+        ul(class="breadcrumb")
+          li
+            a(href="/")
+              span(class="divider") /
+          li
+            a(href="/#{locals.locale}") #{locals.locale}
+          - for(i=0;i<ancestors.length - 1;i++)
+            -var node = ancestors[i]
             li
               span(class="divider") /
-              a(href="/#{locals.data.Locale}/#{Ancestor.NodeId}") #{Ancestor.Name}
-        li(class="active")
-          span(class="divider") /
-          |#{locals.data.Name}
+              a(href="/#{locals.locale}/#{node.BrowseNodeId}") #{node.Name}
+          li(class="active")
+            span(class="divider") /
+            |#{locals.data.Name}
+          
       ul(class="breadcrumb")
-        - if(locals.data.Children)
+        - if(locals.data.Children && locals.data.Children.length!=0)
           -for(i=0 ; i < locals.data.Children.length ; i++)
             -var child = locals.data.Children[i]
             li
               -if(i!=0)
                 span(class="divider") |
-              a(href="/#{locals.data.Locale}/#{child.NodeId}") #{child.Name}
+              a(href="/#{locals.locale}/#{child.BrowseNodeId}") #{child.Name}
         - else
           li 
             
@@ -40,7 +42,7 @@
 script
   $(function(){
     $(".boxes").hide()
-    jQuery.getJSON("/api/#{locals.data.Locale}/#{locals.data.NodeId}",function(items,textStatus) {
+    jQuery.getJSON("/api/#{locals.locale}/#{locals.data.BrowseNodeId}",function(items,textStatus) {
       if(textStatus == 'success') {
         items.sort(function(a,b){
           if(a.Title === b.Title){
@@ -54,11 +56,11 @@ script
             .attr("class","widelink")
             .attr("href",value.DetailPageURL)
             .attr("target","_blank");
-          if(value.Images){
+          if(value.MediumImage){
             $link.append($("<img/>")
-              .attr("src",value.Images.Medium.URL)
-              .attr("width",value.Images.Medium.Width)
-              .attr("height",value.Images.Medium.Height)
+              .attr("src",value.MediumImage.URL)
+              .attr("width",value.MediumImage.Width)
+              .attr("height",value.MediumImage.Height)
               );
           }
           else{
