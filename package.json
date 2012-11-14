@@ -1,6 +1,6 @@
 {
   "name": "qjitsu",
-  "version": "0.0.1-38",
+  "version": "0.0.1-40",
   "private": true,
   "dependencies": {
     "async": "*",

@@ -10,7 +10,7 @@ describe "version", ->
   #     done()
   #     
   it "can execute itemLookup", (done)->
-    apacbridge.nodeLookupFull "JP",[apacroot.rootnode("JP","Books")],(err,nodeResult)->
+    apacbridge.nodeLookup "JP",[apacroot.rootnode("JP","Books")],["BrowseNodeInfo"],(err,nodeResult)->
       if(err)
         console.log JSON.stringify(err,null," ")
         return done()
